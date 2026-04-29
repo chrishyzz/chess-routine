@@ -89,7 +89,7 @@ Your study sessions are stored locally in your browser's localStorage. This mean
 This app uses Lichess OAuth for authentication. The OAuth configuration is:
 
 - **Client ID:** `chess-study-tracker`
-- **Scopes:** `email:read`, `read:preferences`
+- **Scopes:** `email:read`, `preferences:read`
 - **Flow:** OAuth 2.0 with PKCE (client-side safe)
 
 To use your own Lichess API application:
