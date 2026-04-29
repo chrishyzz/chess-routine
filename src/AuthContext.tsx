@@ -2,7 +2,7 @@ import { HttpClient, OAuth2AuthCodePKCE } from '@bity/oauth2-auth-code-pkce';
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 
 const lichessHost = 'https://lichess.org';
-const scopes = ['email:read', 'preferences:read'];
+const scopes = ['email:read'];
 const clientId = 'chess-study-tracker';
 const clientUrl = (() => {
   const url = new URL(window.location.href);
