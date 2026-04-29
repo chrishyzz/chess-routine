@@ -1,9 +1,0 @@
-value:
-  {
-    "users":
-      [
-        { "id": "yulia", "username": "Yulia", "perfs": { "blitz": { "rating": 2425, "progress": 0 } }, "title": "WNM" },
-        { "id": "elena", "username": "Elena", "perfs": { "blitz": { "rating": 2404, "progress": 0 } }, "title": "GM" },
-        { "id": "ana", "username": "Ana", "perfs": { "blitz": { "rating": 2391, "progress": 0 } }, "title": "WNM" },
-      ],
-  }

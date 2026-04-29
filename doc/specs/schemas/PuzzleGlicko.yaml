@@ -1,9 +1,0 @@
-type: object
-
-properties:
-  rating:
-    type: number
-  deviation:
-    type: number
-  provisional:
-    type: boolean
