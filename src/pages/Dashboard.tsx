@@ -98,6 +98,26 @@ export function Dashboard() {
     }, ...currentSessions]);
   }
 
+  async function deleteSession(sessionId: string) {
+    if (!user || !window.confirm('Delete this study session?')) {
+      return;
+    }
+
+    setError(null);
+    const { error: deleteError } = await supabase
+      .from('study_sessions')
+      .delete()
+      .eq('id', sessionId)
+      .eq('user_id', user.id);
+
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+
+    setSessions(currentSessions => currentSessions.filter(session => session.id !== sessionId));
+  }
+
   return (
     <div className="min-h-screen bg-secondary text-white">
       <header className="border-b border-gray-800 bg-primary">
@@ -116,8 +136,8 @@ export function Dashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        <section className="rounded-lg bg-primary p-6">
+      <main className="mx-auto min-w-0 max-w-3xl px-4 py-8">
+        <section className="min-w-0 rounded-lg bg-primary p-4 sm:p-6">
           <h2 className="mb-1 text-xl font-semibold">Log a study session</h2>
           <p className="mb-6 text-sm text-gray-400">Keep your routine moving with a quick note.</p>
           <StudySessionForm onSubmit={logSession} />
@@ -126,7 +146,7 @@ export function Dashboard() {
 
         {!isLoading && <StudyAnalytics sessions={sessions} />}
 
-        <section className="mt-8">
+        <section className="mt-8 min-w-0">
           <h2 className="mb-4 text-xl font-semibold">Past sessions</h2>
           {isLoading ? (
             <p className="rounded-lg bg-primary px-5 py-8 text-center text-sm text-gray-400">Loading sessions...</p>
@@ -135,17 +155,24 @@ export function Dashboard() {
               Your logged sessions will appear here.
             </p>
           ) : (
-            <div className="divide-y divide-gray-800 rounded-lg bg-primary">
+            <div className="min-w-0 divide-y divide-gray-800 overflow-hidden rounded-lg bg-primary">
               {sessions.map(session => (
-                <article key={session.id} className="px-5 py-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <h3 className="font-medium">{session.category}</h3>
-                    <time className="text-sm text-gray-500" dateTime={session.createdAt}>
-                      {new Date(session.createdAt).toLocaleDateString()}
-                    </time>
+                <article key={session.id} className="min-w-0 px-4 py-4 sm:px-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="font-medium">{session.category}</h3>
+                      <p className="mt-1 text-sm text-gray-300">{session.durationMinutes} minutes</p>
+                      {session.notes && <p className="mt-2 break-words text-sm text-gray-400">{session.notes}</p>}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <time className="text-sm text-gray-500" dateTime={session.createdAt}>
+                        {new Date(session.createdAt).toLocaleDateString()}
+                      </time>
+                      <button type="button" onClick={() => void deleteSession(session.id)} className="text-sm text-red-400 transition hover:text-red-300">
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <p className="mt-1 text-sm text-gray-300">{session.durationMinutes} minutes</p>
-                  {session.notes && <p className="mt-2 text-sm text-gray-400">{session.notes}</p>}
                 </article>
               ))}
             </div>
