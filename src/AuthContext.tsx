@@ -1,9 +1,10 @@
-import { HttpClient, OAuth2AuthCodePKCE } from '@bity/oauth2-auth-code-pkce';
+import { HttpClient, LOCALSTORAGE_STATE, OAuth2AuthCodePKCE } from '@bity/oauth2-auth-code-pkce';
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 
 const lichessHost = 'https://lichess.org';
 const scopes = ['email:read'];
 const clientId = 'chess-study-tracker';
+const sessionStorageKey = 'chess-routine-auth-session';
 const clientUrl = (() => {
   const url = new URL(window.location.href);
   url.search = '';
@@ -53,6 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const hasAuthCode = await oauth.isReturningFromAuthServer();
       if (hasAuthCode) {
+        window.history.replaceState({}, document.title, clientUrl);
+      }
+      const storedSession = localStorage.getItem(sessionStorageKey);
+      const session = storedSession ? JSON.parse(storedSession) as { user: User; accessToken: string } : null;
+
+      if (hasAuthCode || session) {
         const accessContext = await oauth.getAccessToken();
         const token = accessContext.token?.value;
         if (token) {
@@ -65,14 +72,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const res = await fetch(`${lichessHost}/api/account`);
           const data = await res.json();
           
-          setUser({
+          const authenticatedUser = {
             id: data.id,
             email: data.email || '',
             username: data.username || data.id,
-          });
+          };
+          setUser(authenticatedUser);
+          localStorage.setItem(sessionStorageKey, JSON.stringify({
+            user: authenticatedUser,
+            accessToken: token,
+          }));
         }
       }
     } catch (err) {
+      localStorage.removeItem(sessionStorageKey);
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
       setLoading(false);
@@ -98,11 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
         });
       }
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
       setUser(null);
       setAccessToken(null);
       setDecoratedFetch(null);
-    } catch (err) {
-      console.error('Logout error:', err);
+      localStorage.removeItem(sessionStorageKey);
+      localStorage.removeItem(LOCALSTORAGE_STATE);
     }
   }
 

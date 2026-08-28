@@ -10,9 +10,10 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@bity/oauth2-auth-code-pkce": "^2",
+    "@supabase/supabase-js": "^2.112.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@bity/oauth2-auth-code-pkce": "^2",
     "recharts": "^2.10.0"
   },
   "devDependencies": {
