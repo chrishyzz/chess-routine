@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { StudySessionForm, StudyCategory } from '../components/StudySessionForm';
 import { StudyAnalytics } from '../components/StudyAnalytics';
+import { Projects } from '../components/Projects';
 import { supabase } from '../lib/supabase';
 
 interface StudySession {
@@ -18,48 +19,46 @@ export function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchSessions = async () => {
     if (!user) {
       setSessions([]);
       setIsLoading(false);
       return;
     }
 
-    let isCancelled = false;
-    const userId = user.id;
+    setIsLoading(true);
+    setError(null);
 
-    async function fetchSessions() {
-      setIsLoading(true);
-      setError(null);
+    const { data, error: fetchError } = await supabase
+      .from('study_sessions')
+      .select('id, category, duration_minutes, notes, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-      const { data, error: fetchError } = await supabase
-        .from('study_sessions')
-        .select('id, category, duration_minutes, notes, created_at')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (isCancelled) {
-        return;
-      }
-
-      if (fetchError) {
-        setError(fetchError.message);
-        setIsLoading(false);
-        return;
-      }
-
-      setSessions(data.map(session => ({
-        id: session.id,
-        category: session.category as StudyCategory,
-        durationMinutes: session.duration_minutes,
-        notes: session.notes,
-        createdAt: session.created_at,
-      })));
+    if (fetchError) {
+      setError(fetchError.message);
       setIsLoading(false);
+      return;
     }
 
-    void fetchSessions();
+    setSessions(data.map(session => ({
+      id: session.id,
+      category: session.category as StudyCategory,
+      durationMinutes: session.duration_minutes,
+      notes: session.notes,
+      createdAt: session.created_at,
+    })));
+    setIsLoading(false);
+  };
 
+  useEffect(() => {
+    let isCancelled = false;
+    async function fetch() {
+      if (!isCancelled) {
+        await fetchSessions();
+      }
+    }
+    void fetch();
     return () => {
       isCancelled = true;
     };
@@ -143,6 +142,8 @@ export function Dashboard() {
           <StudySessionForm onSubmit={logSession} />
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
         </section>
+
+        {user && <Projects userId={user.id} error={error} onError={setError} onSessionLogged={() => void fetchSessions()} />}
 
         {!isLoading && <StudyAnalytics sessions={sessions} />}
 
