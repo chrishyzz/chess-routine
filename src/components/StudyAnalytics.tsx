@@ -119,8 +119,8 @@ function Heatmap({ sessions }: StudyAnalyticsProps) {
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-1">
-        <div className="w-full min-w-[640px]">
+      <div className="w-full overflow-x-auto pb-2">
+        <div className="w-full min-w-[600px]">
           <div className="mb-2 ml-9 grid grid-cols-[repeat(16,minmax(0,1fr))] text-xs text-gray-500">
             {weeks.map((weekStart, weekIndex) => {
               const previousWeek = weeks[weekIndex - 1];
@@ -194,8 +194,8 @@ function CategoryPie({ sessions }: StudyAnalyticsProps) {
       {totals.length === 0 ? (
         <p className="flex h-64 items-center justify-center text-sm text-gray-500">No activity in this period.</p>
       ) : (
-        <div className="grid min-w-0 items-center gap-4 md:grid-cols-[minmax(0,1fr)_minmax(190px,0.8fr)]">
-          <div className="relative h-64 min-w-0 w-full overflow-hidden">
+        <div className="flex min-w-0 flex-col items-center justify-between gap-4 sm:flex-row">
+          <div className="relative h-64 w-full max-w-full min-w-0 overflow-hidden sm:flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={totals} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="82%" paddingAngle={2}>
