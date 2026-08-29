@@ -216,9 +216,13 @@ export function Dashboard() {
                             <time className="text-sm text-gray-500" dateTime={session.createdAt}>
                               {new Date(session.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </time>
-                            <button type="button" onClick={() => void deleteSession(session.id)} className="text-sm text-red-400 transition hover:text-red-300">
-                              Delete
-                            </button>
+                          <button 
+  type="button" 
+  onClick={() => void deleteSession(session.id)} 
+  className="text-sm text-gray-500 transition hover:text-red-400"
+>
+  Delete
+</button>
                           </div>
                         </div>
                       </article>
