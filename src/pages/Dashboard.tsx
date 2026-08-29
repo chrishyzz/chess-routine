@@ -68,10 +68,11 @@ export function Dashboard() {
     setError(null);
 
     const { data, error: fetchError } = await supabase
-      .from('study_sessions')
-      .select('id, category, duration_minutes, notes, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+  .from('study_sessions')
+  .select('id, category, duration_minutes, notes, created_at')
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: false })
+  .limit(30);
 
     if (fetchError) {
       setError(fetchError.message);
