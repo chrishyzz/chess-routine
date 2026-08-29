@@ -458,11 +458,12 @@ function ProjectCard({
     >
       <div className="flex items-start justify-between gap-3">
         {/* Drag Handle */}
-        <div 
-          {...dragHandleProps}
-          className="flex shrink-0 items-center px-2 text-gray-600 hover:text-gray-300 cursor-grab active:cursor-grabbing transition"
-          title="Drag to reorder"
-        >
+      <div 
+  {...dragHandleProps}
+  className="flex shrink-0 items-center px-2 text-gray-600 hover:text-gray-300 cursor-grab active:cursor-grabbing transition"
+  style={{ touchAction: 'none' }}
+  title="Drag to reorder"
+>
           <span className="text-lg leading-none">⠿</span>
         </div>
 
