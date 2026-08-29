@@ -69,7 +69,7 @@ export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
         />
       </div>
 
-      <button type="submit" className="w-full rounded bg-amber-800 py-2.5 font-semibold text-amber-100 transition hover:bg-amber-900">
+      <button type="submit" className="w-full rounded bg-amber-600 py-2.5 font-semibold text-white transition hover:bg-amber-700">
         Log Session
       </button>
     </form>
