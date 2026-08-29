@@ -178,8 +178,8 @@ export function Dashboard() {
 
       <main className="mx-auto min-w-0 max-w-3xl overflow-x-hidden px-4 py-8">
         <section className="min-w-0 rounded-lg bg-primary p-4 sm:p-6">
-          <h2 className="mb-1 text-xl font-semibold">Log a study session</h2>
-          <p className="mb-6 text-sm text-gray-400">Keep your routine moving with a quick note.</p>
+          <h2 className="mb-1 text-xl font-semibold">Study session</h2>
+          <p className="mb-6 text-sm text-gray-400">Log your activity with a quick note.</p>
           <StudySessionForm onSubmit={logSession} />
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
         </section>
