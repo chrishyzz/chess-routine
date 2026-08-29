@@ -226,7 +226,7 @@ function CategoryPie({ sessions }: StudyAnalyticsProps) {
                 <Pie data={totals} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="78%" paddingAngle={2}>
                   {totals.map(item => <Cell key={item.name} fill={categoryColors[item.name as StudyCategory]} />)}
                 </Pie>
-                <Tooltip formatter={(value: number) => [`${value} min`, 'Study time']} />
+               <Tooltip formatter={(value: number, name: string) => [`${value} min`, name]} />
               </PieChart>
             </ResponsiveContainer>
           </div>
