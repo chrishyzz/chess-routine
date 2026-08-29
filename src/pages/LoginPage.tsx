@@ -17,7 +17,7 @@ export function LoginPage() {
         <div className="bg-primary rounded-2xl p-8 shadow-2xl">
           <h2 className="text-2xl font-semibold text-white mb-2">Welcome back</h2>
           <p className="text-gray-400 mb-8">
-            Keep a record of your chess study. Log sessions, track projects, and see where your time actually goes.
+            Log sessions, track projects, and see where your time actually goes.
           </p>
 
           {/* Features */}
