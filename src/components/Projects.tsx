@@ -673,11 +673,6 @@ export function Projects({ userId, error, onError, onSessionLogged }: ProjectsPr
     setIsLoading(false);
   }
 
-
-
-    await fetchProjects();
-  }
-
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
