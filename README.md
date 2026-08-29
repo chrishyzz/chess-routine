@@ -1,6 +1,6 @@
-# Chess Study Tracker
+# Chess Routine: An easy tracking app
 
-A simple, light-weight app to track chess study, inspired by fitness apps.
+A simple, light-weight way to track chess study, inspired by fitness apps.
 
 ## Features
 
