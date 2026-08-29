@@ -611,8 +611,12 @@ export function Projects({ userId, error, onError, onSessionLogged }: ProjectsPr
   const [isLoading, setIsLoading] = useState(true);
   const [showNewForm, setShowNewForm] = useState(false);
 
-  const sensors = useSensors(
-  useSensor(PointerSensor),
+ const sensors = useSensors(
+  useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 8,
+    },
+  }),
   useSensor(TouchSensor, {
     activationConstraint: {
       delay: 250,
