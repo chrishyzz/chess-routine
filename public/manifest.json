@@ -1,0 +1,16 @@
+{
+  "name": "Chess Routine",
+  "short_name": "Chess Routine",
+  "description": "A minimalist study tracker.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0f12",
+  "theme_color": "#0d0f12",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
