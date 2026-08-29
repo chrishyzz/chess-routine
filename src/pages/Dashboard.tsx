@@ -13,6 +13,44 @@ interface StudySession {
   createdAt: string;
 }
 
+function getDateLabel(dateStr: string): string {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  if (isSameDay(date, today)) return 'Today';
+  if (isSameDay(date, yesterday)) return 'Yesterday';
+
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function getLocalDateKey(dateStr: string): string {
+  const date = new Date(dateStr);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function groupSessionsByDate(sessions: StudySession[]): { label: string; sessions: StudySession[] }[] {
+  const groups: { label: string; key: string; sessions: StudySession[] }[] = [];
+
+  for (const session of sessions) {
+    const key = getLocalDateKey(session.createdAt);
+    const existing = groups.find(g => g.key === key);
+    if (existing) {
+      existing.sessions.push(session);
+    } else {
+      groups.push({ label: getDateLabel(session.createdAt), key, sessions: [session] });
+    }
+  }
+
+  return groups;
+}
+
 export function Dashboard() {
   const { user, logout } = useAuth();
   const [sessions, setSessions] = useState<StudySession[]>([]);
@@ -117,6 +155,8 @@ export function Dashboard() {
     setSessions(currentSessions => currentSessions.filter(session => session.id !== sessionId));
   }
 
+  const sessionGroups = groupSessionsByDate(sessions);
+
   return (
     <div className="min-h-screen bg-secondary text-white">
       <header className="border-b border-gray-800 bg-primary">
@@ -156,25 +196,34 @@ export function Dashboard() {
               Your logged sessions will appear here.
             </p>
           ) : (
-            <div className="min-w-0 divide-y divide-gray-800 overflow-hidden rounded-lg bg-primary">
-              {sessions.map(session => (
-                <article key={session.id} className="min-w-0 px-4 py-4 sm:px-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="font-medium">{session.category}</h3>
-                      <p className="mt-1 text-sm text-gray-300">{session.durationMinutes} minutes</p>
-                      {session.notes && <p className="mt-2 break-words text-sm text-gray-400">{session.notes}</p>}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <time className="text-sm text-gray-500" dateTime={session.createdAt}>
-                        {new Date(session.createdAt).toLocaleDateString()}
-                      </time>
-                      <button type="button" onClick={() => void deleteSession(session.id)} className="text-sm text-red-400 transition hover:text-red-300">
-                        Delete
-                      </button>
-                    </div>
+            <div className="min-w-0 space-y-6">
+              {sessionGroups.map((group, groupIndex) => (
+                <div key={group.key}>
+                  <p className={`mb-2 text-xs uppercase tracking-widest text-gray-500 ${groupIndex === 0 ? '' : 'mt-6'}`}>
+                    {group.label}
+                  </p>
+                  <div className="min-w-0 divide-y divide-gray-800 overflow-hidden rounded-lg bg-primary">
+                    {group.sessions.map(session => (
+                      <article key={session.id} className="min-w-0 px-4 py-4 sm:px-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="font-medium">{session.category}</h3>
+                            <p className="mt-1 text-sm text-gray-300">{session.durationMinutes} minutes</p>
+                            {session.notes && <p className="mt-2 break-words text-sm text-gray-400">{session.notes}</p>}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-3">
+                            <time className="text-sm text-gray-500" dateTime={session.createdAt}>
+                              {new Date(session.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </time>
+                            <button type="button" onClick={() => void deleteSession(session.id)} className="text-sm text-red-400 transition hover:text-red-300">
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
                   </div>
-                </article>
+                </div>
               ))}
             </div>
           )}
