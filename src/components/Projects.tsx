@@ -1,4 +1,21 @@
 import { useState, useEffect } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { supabase } from '../lib/supabase';
 import { StudyCategory } from './StudySessionForm';
 
@@ -256,11 +273,12 @@ function LogSessionForm({
 
     try {
       // Insert study session
+      const formattedNotes = notes.trim() ? `[Project: ${project.title}] ${notes.trim()}` : `[Project: ${project.title}]`;
       const { error: insertError } = await supabase.from('study_sessions').insert({
         user_id: userId,
         category: project.category,
         duration_minutes: time,
-        notes: notes.trim(),
+        notes: formattedNotes,
         created_at: createdAt,
       });
 
@@ -372,19 +390,15 @@ function ProjectCard({
   userId,
   onUpdate,
   onError,
-  isFirst,
-  isLast,
-  onMoveUp,
-  onMoveDown,
+  isDragging,
+  dragHandleProps,
 }: {
   project: Project;
   userId: string;
   onUpdate: () => void;
   onError: (err: string) => void;
-  isFirst: boolean;
-  isLast: boolean;
-  onMoveUp: () => Promise<void>;
-  onMoveDown: () => Promise<void>;
+  isDragging: boolean;
+  dragHandleProps: any;
 }) {
   const [showLogForm, setShowLogForm] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
@@ -438,8 +452,19 @@ function ProjectCard({
   }
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-primary p-4">
+    <div 
+      className={`rounded-lg border border-gray-800 bg-primary p-4 transition-opacity ${isDragging ? 'opacity-50' : ''}`}
+    >
       <div className="flex items-start justify-between gap-3">
+        {/* Drag Handle */}
+        <div 
+          {...dragHandleProps}
+          className="flex shrink-0 items-center px-2 text-gray-600 hover:text-gray-300 cursor-grab active:cursor-grabbing transition"
+          title="Drag to reorder"
+        >
+          <span className="text-lg leading-none">⠿</span>
+        </div>
+
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-3">
             <h3 className="font-semibold text-white">{project.title}</h3>
@@ -504,29 +529,6 @@ function ProjectCard({
         </div>
 
         <div className="flex shrink-0 flex-col gap-1">
-          <div className="flex gap-1">
-            {!isFirst && (
-              <button
-                type="button"
-                onClick={() => void onMoveUp()}
-                className="text-sm text-gray-500 transition hover:text-white"
-                title="Move up"
-              >
-                ↑
-              </button>
-            )}
-            {!isLast && (
-              <button
-                type="button"
-                onClick={() => void onMoveDown()}
-                className="text-sm text-gray-500 transition hover:text-white"
-                title="Move down"
-              >
-                ↓
-              </button>
-            )}
-          </div>
-
           <button
             type="button"
             onClick={() => setShowLogForm(!showLogForm)}
@@ -576,10 +578,46 @@ function ProjectCard({
   );
 }
 
+function SortableProjectCard(props: React.ComponentProps<typeof ProjectCard> & { id: string }) {
+  const { id, ...otherProps } = props;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <ProjectCard
+        {...otherProps}
+        isDragging={isDragging}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </div>
+  );
+}
+
 export function Projects({ userId, error, onError, onSessionLogged }: ProjectsProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewForm, setShowNewForm] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      distance: 8,
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     void fetchProjects();
@@ -663,6 +701,39 @@ export function Projects({ userId, error, onError, onSessionLogged }: ProjectsPr
     await fetchProjects();
   }
 
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = projects.findIndex(p => p.id === active.id);
+    const newIndex = projects.findIndex(p => p.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Optimistically update local state
+    const newProjects = arrayMove(projects, oldIndex, newIndex);
+    setProjects(newProjects);
+
+    // Update sort_order for all affected projects
+    const updates = newProjects.map((project, index) =>
+      supabase.from('projects').update({ sort_order: index }).eq('id', project.id)
+    );
+
+    const results = await Promise.all(updates);
+    if (results.some(r => r.error)) {
+      onError('Failed to reorder projects');
+      // Revert to previous state on error
+      await fetchProjects();
+      return;
+    }
+
+    // Refresh to confirm changes
+    await fetchProjects();
+  }
+
   if (isLoading) {
     return null;
   }
@@ -702,24 +773,32 @@ export function Projects({ userId, error, onError, onSessionLogged }: ProjectsPr
           No active projects. Create one to get started!
         </p>
       ) : (
-        <div className="space-y-4">
-          {projects.map((project, index) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              userId={userId}
-              isFirst={index === 0}
-              isLast={index === projects.length - 1}
-              onMoveUp={() => moveProject(project.id, 'up')}
-              onMoveDown={() => moveProject(project.id, 'down')}
-              onUpdate={() => {
-                void fetchProjects();
-                onSessionLogged();
-              }}
-              onError={onError}
-            />
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={projects.map(p => p.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-4">
+              {projects.map((project) => (
+                <SortableProjectCard
+                  key={project.id}
+                  id={project.id}
+                  project={project}
+                  userId={userId}
+                  onUpdate={() => {
+                    void fetchProjects();
+                    onSessionLogged();
+                  }}
+                  onError={onError}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {showNewForm && (

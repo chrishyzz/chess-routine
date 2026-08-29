@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Cell,
   Pie,
@@ -70,6 +70,8 @@ function startOfWeek(date: Date) {
 }
 
 function Heatmap({ sessions }: StudyAnalyticsProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const today = startOfDay(new Date());
   const currentWeekStart = startOfWeek(today);
   const firstWeekStart = new Date(currentWeekStart);
@@ -103,6 +105,17 @@ function Heatmap({ sessions }: StudyAnalyticsProps) {
     return 'bg-blue-400';
   };
 
+  // Anchor scroll to the right on mount
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const scrollContainer = scrollContainerRef.current;
+      // Use setTimeout to ensure scrollWidth is available after render
+      setTimeout(() => {
+        scrollContainer.scrollLeft = scrollContainer.scrollWidth;
+      }, 0);
+    }
+  }, []);
+
   return (
     <section className="rounded-lg bg-primary p-4">
       <div className="mb-4 flex items-baseline justify-between gap-4">
@@ -119,24 +132,36 @@ function Heatmap({ sessions }: StudyAnalyticsProps) {
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto pb-2">
-        <div className="min-w-0">
-          <div className="mb-2 ml-7 grid grid-cols-[repeat(16,minmax(0,1fr))] text-[10px] text-gray-500 sm:ml-9 sm:text-xs">
-            {weeks.map((weekStart, weekIndex) => {
-              const previousWeek = weeks[weekIndex - 1];
-              const isFirstWeekOfMonth = !previousWeek || weekStart.getMonth() !== previousWeek.getMonth();
-              return isFirstWeekOfMonth ? (
-                <span key={dateKey(weekStart)} className="justify-self-center">
-                  {weekStart.toLocaleDateString('en-US', { month: 'short' })}
-                </span>
-              ) : <span key={dateKey(weekStart)} />;
-            })}
-          </div>
-          <div className="flex gap-1 sm:gap-2">
-            <div className="grid w-5 shrink-0 grid-rows-7 gap-0.5 text-[10px] text-gray-500 sm:w-7 sm:gap-1 sm:text-xs">
-              {dayLabels.map((label, index) => <span key={label} className={index % 2 === 1 ? '' : 'invisible'}>{label}</span>)}
+      <div className="flex gap-1 sm:gap-2">
+        {/* Fixed day labels on the left */}
+        <div className="grid w-5 shrink-0 grid-rows-7 gap-0.5 text-[10px] text-gray-500 sm:w-7 sm:gap-1 sm:text-xs">
+          {dayLabels.map((label, index) => <span key={label} className={index % 2 === 1 ? '' : 'invisible'}>{label}</span>)}
+        </div>
+
+        {/* Scrollable section containing month labels and grid */}
+        <div 
+          ref={scrollContainerRef}
+          className="relative flex-1 overflow-x-auto pb-2"
+        >
+          {/* Fade overlay on the left to hint at more history */}
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-primary to-transparent z-10" />
+          
+          <div className="min-w-0">
+            {/* Month labels - inside scrollable container */}
+            <div className="mb-2 inline-grid grid-cols-[repeat(16,minmax(0,1fr))] gap-0.5 text-[10px] text-gray-500 sm:gap-1 sm:text-xs whitespace-nowrap">
+              {weeks.map((weekStart, weekIndex) => {
+                const previousWeek = weeks[weekIndex - 1];
+                const isFirstWeekOfMonth = !previousWeek || weekStart.getMonth() !== previousWeek.getMonth();
+                return isFirstWeekOfMonth ? (
+                  <span key={dateKey(weekStart)} className="justify-self-center">
+                    {weekStart.toLocaleDateString('en-US', { month: 'short' })}
+                  </span>
+                ) : <span key={dateKey(weekStart)} />;
+              })}
             </div>
-            <div className="grid min-w-0 flex-1 grid-flow-col grid-cols-[repeat(16,minmax(0,1fr))] grid-rows-7 gap-0.5 sm:gap-1">
+
+            {/* Heatmap grid */}
+            <div className="inline-grid grid-flow-col grid-cols-[repeat(16,minmax(0,1fr))] grid-rows-7 gap-0.5 sm:gap-1">
               {days.map((day, index) => {
                 const isFuture = day === null;
                 const minutes = day === null ? 0 : minutesByDay[dateKey(day)] || 0;
@@ -144,7 +169,7 @@ function Heatmap({ sessions }: StudyAnalyticsProps) {
                   <span
                     key={day ? dateKey(day) : `future-${index}`}
                     title={day ? `${day.toLocaleDateString()}: ${minutes} minutes` : undefined}
-                    className={`block h-2.5 w-2.5 justify-self-center rounded-sm border border-gray-700/70 sm:h-4 sm:w-4 ${isFuture ? 'bg-gray-900/50' : getIntensity(minutes)}`}
+                    className={`block h-4 w-4 justify-self-center rounded-sm border border-gray-700/70 sm:h-5 sm:w-5 ${isFuture ? 'bg-gray-900/50' : getIntensity(minutes)}`}
                   />
                 );
               })}

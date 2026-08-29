@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@bity/oauth2-auth-code-pkce": "^2",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
     "@supabase/supabase-js": "^2.112.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
