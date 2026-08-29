@@ -534,7 +534,7 @@ function ProjectCard({
           <button
             type="button"
             onClick={() => setShowLogForm(!showLogForm)}
-            className="whitespace-nowrap rounded border border-gray-600 px-3 py-1.5 text-sm text-white bg-transparent transition hover:bg-gray-700"
+            className="whitespace-nowrap rounded border border-amber-800 px-3 py-1.5 text-sm text-amber-200 bg-amber-950 transition hover:bg-amber-900"
           >
             {showLogForm ? 'Cancel' : 'Log'}
           </button>
