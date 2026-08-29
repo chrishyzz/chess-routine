@@ -200,7 +200,7 @@ export function Dashboard() {
             <div className="min-w-0 space-y-6">
               {sessionGroups.map((group, groupIndex) => (
                 <div key={group.key}>
-                  <p className={`mb-2 text-xs uppercase tracking-widest text-gray-500 ${groupIndex === 0 ? '' : 'mt-6'}`}>
+                 <p className={`mb-2 text-xs uppercase tracking-widest text-amber-600 ${groupIndex === 0 ? '' : 'mt-6'}`}>
                     {group.label}
                   </p>
                   <div className="min-w-0 divide-y divide-gray-800 overflow-hidden rounded-lg bg-primary">
