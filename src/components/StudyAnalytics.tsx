@@ -99,10 +99,10 @@ function Heatmap({ sessions }: StudyAnalyticsProps) {
   const maxMinutes = Math.max(1, ...visibleMinutes);
   const getIntensity = (minutes: number) => {
     if (minutes === 0) return 'bg-gray-800';
-    if (minutes <= maxMinutes * 0.25) return 'bg-blue-950';
-    if (minutes <= maxMinutes * 0.5) return 'bg-blue-800';
-    if (minutes <= maxMinutes * 0.75) return 'bg-blue-600';
-    return 'bg-blue-400';
+   if (minutes <= maxMinutes * 0.25) return 'bg-amber-950';
+if (minutes <= maxMinutes * 0.5) return 'bg-amber-800';
+if (minutes <= maxMinutes * 0.75) return 'bg-amber-600';
+return 'bg-amber-400';
   };
 
   // Anchor scroll to the right on mount
