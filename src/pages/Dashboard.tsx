@@ -35,7 +35,7 @@ function getLocalDateKey(dateStr: string): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
-function groupSessionsByDate(sessions: StudySession[]): { label: string; sessions: StudySession[] }[] {
+function groupSessionsByDate(sessions: StudySession[]): { label: string; key: string; sessions: StudySession[] }[] {
   const groups: { label: string; key: string; sessions: StudySession[] }[] = [];
 
   for (const session of sessions) {
