@@ -10,7 +10,7 @@ export function LoginPage() {
         <div className="text-center mb-12">
           <div className="text-6xl mb-4">♟️</div>
           <h1 className="text-4xl font-bold text-white mb-2">Chess Routine</h1>
-          <p className="text-gray-400">A simple training log for players</p>
+          <p className="text-gray-400">A minimalist study tracker</p>
         </div>
 
         {/* Card */}
