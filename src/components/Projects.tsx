@@ -397,8 +397,8 @@ function ProjectCard({
   userId: string;
   onUpdate: () => void;
   onError: (err: string) => void;
-  isDragging: boolean;
-  dragHandleProps: any;
+  isDragging?: boolean;
+  dragHandleProps?: any;
 }) {
   const [showLogForm, setShowLogForm] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
@@ -611,9 +611,7 @@ export function Projects({ userId, error, onError, onSessionLogged }: ProjectsPr
   const [showNewForm, setShowNewForm] = useState(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      distance: 8,
-    }),
+    useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -675,28 +673,7 @@ export function Projects({ userId, error, onError, onSessionLogged }: ProjectsPr
     setIsLoading(false);
   }
 
-  async function moveProject(projectId: string, direction: 'up' | 'down') {
-    const currentIndex = projects.findIndex(p => p.id === projectId);
-    if (currentIndex === -1) return;
 
-    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    if (targetIndex < 0 || targetIndex >= projects.length) return;
-
-    const currentProject = projects[currentIndex];
-    const targetProject = projects[targetIndex];
-
-    // Swap sort_order values
-    const tempOrder = currentProject.sortOrder;
-    const updates = [
-      supabase.from('projects').update({ sort_order: targetProject.sortOrder }).eq('id', currentProject.id),
-      supabase.from('projects').update({ sort_order: tempOrder }).eq('id', targetProject.id),
-    ];
-
-    const results = await Promise.all(updates);
-    if (results.some(r => r.error)) {
-      onError('Failed to reorder projects');
-      return;
-    }
 
     await fetchProjects();
   }
