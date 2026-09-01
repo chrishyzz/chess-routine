@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 export type GoalMetricType = 'time' | 'puzzles' | 'games';
+export type GoalCadence = 'daily' | 'weekly';
 
 export interface Goal {
   id: string;
   userId: string;
   title: string;
   metricType: GoalMetricType;
+  cadence: GoalCadence;
   targetNumber: number;
   createdAt: string;
   archivedAt: string | null;
@@ -29,14 +31,15 @@ interface GoalsProps {
 
 const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-function formatMetricLabel(type: GoalMetricType): string {
+function formatMetricLabel(type: GoalMetricType, cadence: GoalCadence): string {
+  const timeframe = cadence === 'daily' ? 'per day' : 'per week';
   switch (type) {
     case 'time':
-      return 'minutes per day';
+      return `minutes ${timeframe}`;
     case 'puzzles':
-      return 'puzzles per day';
+      return `puzzles ${timeframe}`;
     case 'games':
-      return 'games per day';
+      return `games ${timeframe}`;
   }
 }
 
@@ -98,6 +101,79 @@ function ProgressRing({
   );
 }
 
+function WeeklyProgressCard({
+  weeklyProgress,
+}: {
+  weeklyProgress: number;
+}) {
+  const circumference = 2 * Math.PI * 60;
+  const strokeDashoffset = circumference - (weeklyProgress / 100) * circumference;
+  const isComplete = weeklyProgress >= 100;
+
+  return (
+    <div className="rounded-lg border border-gray-800 bg-primary p-6">
+      <div className="flex flex-col items-center gap-6">
+        {/* Large cumulative progress ring */}
+        <div className="relative h-40 w-40">
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 160 160">
+            {/* Background ring */}
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#374151" strokeWidth="8" />
+            {/* Progress ring */}
+            <circle
+              cx="80"
+              cy="80"
+              r="60"
+              fill="none"
+              stroke={isComplete ? '#10b981' : '#60a5fa'}
+              strokeWidth="8"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className="transition-all duration-500"
+              style={{ transform: 'rotate(-90deg)', transformOrigin: '80px 80px' }}
+            />
+            {/* Center text */}
+            <text
+              x="80"
+              y="70"
+              textAnchor="middle"
+              dominantBaseline="central"
+              className="fill-gray-300 text-3xl font-bold"
+            >
+              {Math.round(weeklyProgress)}%
+            </text>
+            <text
+              x="80"
+              y="100"
+              textAnchor="middle"
+              dominantBaseline="central"
+              className="fill-gray-400 text-sm"
+            >
+              This week
+            </text>
+          </svg>
+        </div>
+
+        {/* Progress bar alternative */}
+        <div className="w-full">
+          <div className="mb-2 flex justify-between">
+            <span className="text-sm text-gray-400">Weekly Progress</span>
+            <span className="text-sm font-semibold text-gray-300">{Math.round(weeklyProgress)}%</span>
+          </div>
+          <div className="h-3 w-full overflow-hidden rounded-full bg-gray-700">
+            <div
+              className={`h-full transition-all duration-500 ${
+                isComplete ? 'bg-green-500' : 'bg-blue-500'
+              }`}
+              style={{ width: `${Math.min(100, weeklyProgress)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NewGoalForm({
   userId,
   onSuccess,
@@ -109,6 +185,7 @@ function NewGoalForm({
 }) {
   const [title, setTitle] = useState('');
   const [metricType, setMetricType] = useState<GoalMetricType>('time');
+  const [cadence, setCadence] = useState<GoalCadence>('daily');
   const [targetNumber, setTargetNumber] = useState('30');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,6 +210,7 @@ function NewGoalForm({
       user_id: userId,
       title: title.trim(),
       metric_type: metricType,
+      cadence: cadence,
       target_number: target,
       created_at: new Date().toISOString(),
     });
@@ -165,25 +243,42 @@ function NewGoalForm({
         />
       </div>
 
-      <div>
-        <label htmlFor="goal-metric" className="mb-2 block text-sm font-medium text-gray-300">
-          Metric
-        </label>
-        <select
-          id="goal-metric"
-          value={metricType}
-          onChange={e => setMetricType(e.target.value as GoalMetricType)}
-          className="w-full rounded border border-gray-700 bg-primary px-3 py-2 text-white focus:border-accent focus:outline-none"
-        >
-          <option value="time">Study time (minutes)</option>
-          <option value="puzzles">Puzzles solved</option>
-          <option value="games">Games played</option>
-        </select>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="goal-metric" className="mb-2 block text-sm font-medium text-gray-300">
+            Metric
+          </label>
+          <select
+            id="goal-metric"
+            value={metricType}
+            onChange={e => setMetricType(e.target.value as GoalMetricType)}
+            className="w-full rounded border border-gray-700 bg-primary px-3 py-2 text-white focus:border-accent focus:outline-none"
+          >
+            <option value="time">Study time (min)</option>
+            <option value="puzzles">Puzzles</option>
+            <option value="games">Games</option>
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="goal-cadence" className="mb-2 block text-sm font-medium text-gray-300">
+            Frequency
+          </label>
+          <select
+            id="goal-cadence"
+            value={cadence}
+            onChange={e => setCadence(e.target.value as GoalCadence)}
+            className="w-full rounded border border-gray-700 bg-primary px-3 py-2 text-white focus:border-accent focus:outline-none"
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
       </div>
 
       <div>
         <label htmlFor="goal-target" className="mb-2 block text-sm font-medium text-gray-300">
-          Daily target
+          Target ({cadence === 'daily' ? 'per day' : 'per week'})
         </label>
         <input
           id="goal-target"
@@ -257,7 +352,7 @@ function GoalCard({
         <div>
           <h3 className="text-sm font-semibold text-white sm:text-base">{goal.title}</h3>
           <p className="mt-1 text-xs uppercase tracking-wider text-gray-400">
-            {goal.targetNumber} {formatMetricLabel(goal.metricType)}
+            {goal.targetNumber} {formatMetricLabel(goal.metricType, goal.cadence)}
           </p>
         </div>
         {showDeleteConfirm && (
@@ -289,17 +384,24 @@ function GoalCard({
         )}
       </div>
 
-      {/* Weekly rings */}
-      <div className="flex justify-between gap-1 sm:gap-4">
-        {weeklyProgress.map((progress, index) => (
-          <ProgressRing
-            key={index}
-            progress={progress}
-            isActive={index === todayIndex}
-            dayLabel={dayLabels[index]}
-          />
-        ))}
-      </div>
+      {/* Daily progress: 7-day rings */}
+      {goal.cadence === 'daily' && (
+        <div className="flex justify-between gap-1 sm:gap-4">
+          {weeklyProgress.map((progress, index) => (
+            <ProgressRing
+              key={index}
+              progress={progress}
+              isActive={index === todayIndex}
+              dayLabel={dayLabels[index]}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Weekly progress: cumulative card */}
+      {goal.cadence === 'weekly' && (
+        <WeeklyProgressCard weeklyProgress={weeklyProgress[0]} />
+      )}
     </div>
   );
 }
@@ -324,7 +426,7 @@ export function Goals({
 
     const { data, error: fetchError } = await supabase
       .from('goals')
-      .select('id, user_id, title, metric_type, target_number, created_at, archived_at')
+      .select('id, user_id, title, metric_type, cadence, target_number, created_at, archived_at')
       .eq('user_id', userId)
       .is('archived_at', null)
       .order('created_at', { ascending: true });
@@ -340,6 +442,7 @@ export function Goals({
       userId: g.user_id,
       title: g.title,
       metricType: g.metric_type as GoalMetricType,
+      cadence: (g.cadence as GoalCadence) || 'daily',
       targetNumber: g.target_number,
       createdAt: g.created_at,
       archivedAt: g.archived_at,
@@ -351,43 +454,71 @@ export function Goals({
 
   function calculateWeeklyProgress(goal: Goal): number[] {
     const today = startOfDay(new Date());
-    const weekProgress: number[] = [];
-
+    
     // Get past 7 days (Monday to Sunday of current week)
     const dayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1; // Convert to 0=Monday
     const mondayOfWeek = new Date(today);
     mondayOfWeek.setDate(today.getDate() - dayOfWeek);
 
-    for (let i = 0; i < 7; i++) {
-      const dayStart = new Date(mondayOfWeek);
-      dayStart.setDate(mondayOfWeek.getDate() + i);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayStart.getDate() + 1);
+    if (goal.cadence === 'daily') {
+      // For daily goals, return progress for each day of the week
+      const weekProgress: number[] = [];
+      for (let i = 0; i < 7; i++) {
+        const dayStart = new Date(mondayOfWeek);
+        dayStart.setDate(mondayOfWeek.getDate() + i);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setDate(dayStart.getDate() + 1);
 
-      // Filter sessions for this day
-      const daySessions = sessions.filter(session => {
+        // Filter sessions for this day
+        const daySessions = sessions.filter(session => {
+          const sessionDate = new Date(session.createdAt);
+          return sessionDate >= dayStart && sessionDate < dayEnd;
+        });
+
+        let dayTotal = 0;
+        switch (goal.metricType) {
+          case 'time':
+            dayTotal = daySessions.reduce((sum, s) => sum + s.durationMinutes, 0);
+            break;
+          case 'puzzles':
+            dayTotal = daySessions.reduce((sum, s) => sum + s.puzzlesSolved, 0);
+            break;
+          case 'games':
+            dayTotal = daySessions.reduce((sum, s) => sum + s.gamesPlayed, 0);
+            break;
+        }
+
+        const progressPercent = (dayTotal / goal.targetNumber) * 100;
+        weekProgress.push(Math.min(100, progressPercent));
+      }
+      return weekProgress;
+    } else {
+      // For weekly goals, return cumulative progress for the entire week
+      const sundayOfWeek = new Date(mondayOfWeek);
+      sundayOfWeek.setDate(mondayOfWeek.getDate() + 7);
+
+      // Filter sessions for the entire week
+      const weekSessions = sessions.filter(session => {
         const sessionDate = new Date(session.createdAt);
-        return sessionDate >= dayStart && sessionDate < dayEnd;
+        return sessionDate >= mondayOfWeek && sessionDate < sundayOfWeek;
       });
 
-      let dayTotal = 0;
+      let weekTotal = 0;
       switch (goal.metricType) {
         case 'time':
-          dayTotal = daySessions.reduce((sum, s) => sum + s.durationMinutes, 0);
+          weekTotal = weekSessions.reduce((sum, s) => sum + s.durationMinutes, 0);
           break;
         case 'puzzles':
-          dayTotal = daySessions.reduce((sum, s) => sum + s.puzzlesSolved, 0);
+          weekTotal = weekSessions.reduce((sum, s) => sum + s.puzzlesSolved, 0);
           break;
         case 'games':
-          dayTotal = daySessions.reduce((sum, s) => sum + s.gamesPlayed, 0);
+          weekTotal = weekSessions.reduce((sum, s) => sum + s.gamesPlayed, 0);
           break;
       }
 
-      const progressPercent = (dayTotal / goal.targetNumber) * 100;
-      weekProgress.push(Math.min(100, progressPercent));
+      const progressPercent = (weekTotal / goal.targetNumber) * 100;
+      return [Math.min(100, progressPercent)];
     }
-
-    return weekProgress;
   }
 
   if (isLoading) {

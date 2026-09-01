@@ -44,3 +44,6 @@ CREATE POLICY "Users can delete their own projects"
 ALTER TABLE study_sessions DROP COLUMN IF EXISTS activity_count;
 ALTER TABLE study_sessions ADD COLUMN puzzles_solved INTEGER DEFAULT 0;
 ALTER TABLE study_sessions ADD COLUMN games_played INTEGER DEFAULT 0;
+
+-- Add cadence field to goals table
+ALTER TABLE goals ADD COLUMN cadence TEXT NOT NULL DEFAULT 'daily' CHECK (cadence IN ('daily', 'weekly'));
