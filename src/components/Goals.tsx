@@ -60,8 +60,8 @@ function ProgressRing({
   const isComplete = progress >= 100;
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className={`relative h-20 w-20 ${isActive ? 'rounded-full bg-gray-800/50 p-0.5' : ''}`}>
+    <div className="flex flex-col items-center gap-1 sm:gap-2">
+      <div className={`relative h-12 w-12 sm:h-20 sm:w-20 ${isActive ? 'rounded-full bg-gray-800/50 p-0.5' : ''}`}>
         <svg className="absolute inset-0 h-full w-full" viewBox="0 0 120 120">
           {/* Background ring */}
           <circle cx="60" cy="60" r="45" fill="none" stroke="#374151" strokeWidth="6" />
@@ -252,10 +252,10 @@ function GoalCard({
   }
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-primary p-6">
-      <div className="mb-6 flex items-start justify-between">
+    <div className="rounded-lg border border-gray-800 bg-primary p-4 sm:p-6">
+      <div className="mb-4 flex flex-col items-start justify-between gap-2 sm:mb-6 sm:flex-row sm:gap-0">
         <div>
-          <h3 className="font-semibold text-white">{goal.title}</h3>
+          <h3 className="text-sm font-semibold text-white sm:text-base">{goal.title}</h3>
           <p className="mt-1 text-xs uppercase tracking-wider text-gray-400">
             {goal.targetNumber} {formatMetricLabel(goal.metricType)}
           </p>
@@ -290,7 +290,7 @@ function GoalCard({
       </div>
 
       {/* Weekly rings */}
-      <div className="flex justify-between">
+      <div className="flex justify-between gap-1 sm:gap-4">
         {weeklyProgress.map((progress, index) => (
           <ProgressRing
             key={index}

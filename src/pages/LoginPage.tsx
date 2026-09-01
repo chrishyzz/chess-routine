@@ -39,7 +39,7 @@ export function LoginPage() {
           {/* Login Button */}
           <button
             onClick={login}
-            className="w-full bg-accent hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+            className="w-full bg-accent text-white font-semibold py-3 px-4 rounded-lg transition transform hover:scale-105 active:scale-95 active:bg-[#8e7a4e] flex items-center justify-center gap-2"
           >
             <span>Login with Lichess</span>
             <span>→</span>

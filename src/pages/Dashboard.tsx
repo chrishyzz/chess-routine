@@ -193,7 +193,9 @@ export function Dashboard() {
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
         </section>
 
-        {user && <Projects userId={user.id} error={error} onError={setError} onSessionLogged={() => void fetchSessions()} />}
+        {user && <div className="mt-6"><Projects userId={user.id} error={error} onError={setError} onSessionLogged={() => void fetchSessions()} /></div>}
+
+        <div className="mb-6" />
 
         {user && <Goals userId={user.id} sessions={sessions} error={error} onError={setError} />}
 

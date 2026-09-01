@@ -176,17 +176,17 @@ function Pace({ sessions }: StudyAnalyticsProps) {
         <div className="space-y-3">
           {totalMinutes > 0 && (
             <div className="text-white">
-              Average <span className="text-accent">{timeDisplay}</span>
+              <span className="text-accent">{timeDisplay}</span>
             </div>
           )}
           {totalPuzzles > 0 && (
             <div className="text-white">
-              Average <span className="text-accent">{puzzlesDisplay}</span>
+              <span className="text-accent">{puzzlesDisplay}</span>
             </div>
           )}
           {totalGames > 0 && (
             <div className="text-white">
-              Average <span className="text-accent">{gamesDisplay}</span>
+              <span className="text-accent">{gamesDisplay}</span>
             </div>
           )}
         </div>
