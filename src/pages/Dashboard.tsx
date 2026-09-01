@@ -38,17 +38,38 @@ function getLocalDateKey(dateStr: string): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
-function groupSessionsByDate(sessions: StudySession[]): { label: string; key: string; sessions: StudySession[] }[] {
-  const groups: { label: string; key: string; sessions: StudySession[] }[] = [];
+interface SessionGroup {
+  label: string;
+  key: string;
+  sessions: StudySession[];
+  totalMinutes: number;
+  totalPuzzles: number;
+  totalGames: number;
+}
+
+function groupSessionsByDate(sessions: StudySession[]): SessionGroup[] {
+  const groups: SessionGroup[] = [];
 
   for (const session of sessions) {
     const key = getLocalDateKey(session.createdAt);
-    const existing = groups.find(g => g.key === key);
-    if (existing) {
-      existing.sessions.push(session);
-    } else {
-      groups.push({ label: getDateLabel(session.createdAt), key, sessions: [session] });
+    let existing = groups.find(g => g.key === key);
+    
+    if (!existing) {
+      existing = {
+        label: getDateLabel(session.createdAt),
+        key,
+        sessions: [],
+        totalMinutes: 0,
+        totalPuzzles: 0,
+        totalGames: 0,
+      };
+      groups.push(existing);
     }
+    
+    existing.sessions.push(session);
+    existing.totalMinutes += session.durationMinutes;
+    existing.totalPuzzles += session.puzzlesSolved;
+    existing.totalGames += session.gamesPlayed;
   }
 
   return groups;
@@ -213,9 +234,14 @@ export function Dashboard() {
             <div className="min-w-0 space-y-6">
               {sessionGroups.map((group, groupIndex) => (
                 <div key={group.key}>
-                 <p className={`mb-2 text-xs uppercase tracking-widest text-accent ${groupIndex === 0 ? '' : 'mt-6'}`}>
-                    {group.label}
-                  </p>
+               <div className={`mb-2 flex items-center justify-between text-xs tracking-widest ${groupIndex === 0 ? '' : 'mt-6'}`}>
+                <span className="uppercase text-accent">{group.label}</span>
+                <span className="text-gray-400">
+                  {group.totalMinutes} mins
+                  {group.totalPuzzles > 0 && ` • ${group.totalPuzzles} puzzles`}
+                  {group.totalGames > 0 && ` • ${group.totalGames} games`}
+                </span>
+              </div>
                   <div className="min-w-0 divide-y divide-gray-800 overflow-hidden rounded-lg bg-primary">
                     {group.sessions.map(session => (
                       <article key={session.id} className="min-w-0 px-4 py-4 sm:px-5">
