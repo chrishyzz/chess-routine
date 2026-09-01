@@ -3,6 +3,7 @@ import { useAuth } from '../AuthContext';
 import { StudySessionForm, StudyCategory } from '../components/StudySessionForm';
 import { StudyAnalytics } from '../components/StudyAnalytics';
 import { Projects } from '../components/Projects';
+import { Goals } from '../components/Goals';
 import { supabase } from '../lib/supabase';
 
 interface StudySession {
@@ -193,6 +194,8 @@ export function Dashboard() {
         </section>
 
         {user && <Projects userId={user.id} error={error} onError={setError} onSessionLogged={() => void fetchSessions()} />}
+
+        {user && <Goals userId={user.id} sessions={sessions} error={error} onError={setError} />}
 
         {!isLoading && <StudyAnalytics sessions={sessions} />}
 

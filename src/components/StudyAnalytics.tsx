@@ -16,6 +16,8 @@ export interface AnalyticsSession {
   category: StudyCategory;
   durationMinutes: number;
   createdAt: string;
+  puzzlesSolved?: number;
+  gamesPlayed?: number;
 }
 
 interface StudyAnalyticsProps {
@@ -85,6 +87,112 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
 function hexToRgba(hex: string, opacity: number): string {
   const { r, g, b } = hexToRgb(hex);
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+function Pace({ sessions }: StudyAnalyticsProps) {
+  const [range, setRange] = useState<'7d' | '30d'>('7d');
+  const today = startOfDay(new Date());
+  const daysBack = range === '7d' ? 7 : 30;
+  const cutoffDate = new Date(today);
+  cutoffDate.setDate(today.getDate() - daysBack);
+
+  // Filter sessions in the range
+  const filteredSessions = sessions.filter(session => {
+    const sessionDate = startOfDay(new Date(session.createdAt));
+    return sessionDate >= cutoffDate && sessionDate <= today;
+  });
+
+  // Calculate totals
+  const totalPuzzles = filteredSessions.reduce((sum, s) => sum + (s.puzzlesSolved || 0), 0);
+  const totalGames = filteredSessions.reduce((sum, s) => sum + (s.gamesPlayed || 0), 0);
+  const totalMinutes = filteredSessions.reduce((sum, s) => sum + s.durationMinutes, 0);
+
+  // Count days with any activity (study time, puzzles, or games)
+  const daysWithData = new Set(
+    filteredSessions
+      .filter(s => s.durationMinutes > 0 || (s.puzzlesSolved || 0) > 0 || (s.gamesPlayed || 0) > 0)
+      .map(s => dateKey(new Date(s.createdAt)))
+  ).size;
+
+  // Hide section entirely if no data at all
+  if (totalMinutes === 0 && totalPuzzles === 0 && totalGames === 0) {
+    return null;
+  }
+
+  // Calculate averages per day
+  const avgPuzzlesPerDay = totalPuzzles / daysBack;
+  const avgGamesPerDay = totalGames / daysBack;
+  const avgMinutesPerDay = totalMinutes / daysBack;
+
+  // Format time display for average per day
+  const formatAvgTime = (minutes: number): string => {
+    const roundedMinutes = Math.round(minutes);
+    if (roundedMinutes < 60) return `${roundedMinutes} min`;
+    const hours = Math.round(minutes / 60);
+    return `${hours} hr${hours > 1 ? 's' : ''}`;
+  };
+
+  // Determine display: per day or per week for time
+  const timeDisplay = avgMinutesPerDay >= (60 / 24) // roughly 2.5 minutes
+    ? `${formatAvgTime(avgMinutesPerDay)} per day`
+    : `${formatAvgTime(avgMinutesPerDay * 7)} per week`;
+
+  // Determine display: per day or per week for puzzles
+  const puzzlesDisplay = avgPuzzlesPerDay >= 1
+    ? `${Math.round(avgPuzzlesPerDay)} puzzle${Math.round(avgPuzzlesPerDay) !== 1 ? 's' : ''} per day`
+    : `${Math.round(avgPuzzlesPerDay * 7)} puzzle${Math.round(avgPuzzlesPerDay * 7) !== 1 ? 's' : ''} per week`;
+
+  // Determine display: per day or per week for games
+  const gamesDisplay = avgGamesPerDay >= 1
+    ? `${Math.round(avgGamesPerDay)} game${Math.round(avgGamesPerDay) !== 1 ? 's' : ''} per day`
+    : `${Math.round(avgGamesPerDay * 7)} game${Math.round(avgGamesPerDay * 7) !== 1 ? 's' : ''} per week`;
+
+  const hasEnoughData = daysWithData >= 3;
+
+  return (
+    <section className="rounded-lg bg-primary p-4">
+      <div className="mb-4 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <h2 className="text-lg font-semibold">Your pace</h2>
+          <p className="mt-1 text-sm text-gray-400">Average activity in this period</p>
+        </div>
+        <div className="flex rounded border border-gray-700 p-0.5 text-sm">
+          {([['7d', 'Last 7 days'], ['30d', 'Last 30 days']] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRange(value)}
+              className={`rounded px-3 py-1.5 transition ${range === value ? 'bg-accent text-white' : 'text-gray-400 hover:text-white'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!hasEnoughData ? (
+        <p className="text-sm text-gray-500">Not enough data yet — log activity on at least 3 days to see your pace.</p>
+      ) : (
+        <div className="space-y-3">
+          {totalMinutes > 0 && (
+            <div className="text-white">
+              Average <span className="text-accent">{timeDisplay}</span>
+            </div>
+          )}
+          {totalPuzzles > 0 && (
+            <div className="text-white">
+              Average <span className="text-accent">{puzzlesDisplay}</span>
+            </div>
+          )}
+          {totalGames > 0 && (
+            <div className="text-white">
+              Average <span className="text-accent">{gamesDisplay}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function Heatmap({ sessions }: StudyAnalyticsProps) {
@@ -413,6 +521,7 @@ function CategoryPie({ sessions }: StudyAnalyticsProps) {
 export function StudyAnalytics({ sessions }: StudyAnalyticsProps) {
   return (
     <div className="mt-8 grid gap-6">
+      <Pace sessions={sessions} />
       <Heatmap sessions={sessions} />
       <WeeklyTimeChart sessions={sessions} />
       <CategoryPie sessions={sessions} />
