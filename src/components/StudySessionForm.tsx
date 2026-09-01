@@ -3,7 +3,7 @@ import { useState } from 'react';
 export type StudyCategory = 'Games & analysis' | 'Tactics' | 'Endgame' | 'Middlegame' | 'Openings';
 
 interface StudySessionFormProps {
-  onSubmit: (session: { category: StudyCategory; durationMinutes: number; notes: string }) => void;
+  onSubmit: (session: { category: StudyCategory; durationMinutes: number; puzzlesSolved: number; gamesPlayed: number; notes: string }) => void;
 }
 
 const categories: StudyCategory[] = ['Games & analysis', 'Tactics', 'Endgame', 'Middlegame', 'Openings'];
@@ -11,19 +11,25 @@ const categories: StudyCategory[] = ['Games & analysis', 'Tactics', 'Endgame', '
 export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
   const [category, setCategory] = useState<StudyCategory>('Games & analysis');
   const [durationMinutes, setDurationMinutes] = useState('30');
+  const [puzzlesSolved, setPuzzlesSolved] = useState('0');
+  const [gamesPlayed, setGamesPlayed] = useState('0');
   const [notes, setNotes] = useState('');
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const duration = Number(durationMinutes);
+    const puzzles = Number(puzzlesSolved);
+    const games = Number(gamesPlayed);
 
     if (!Number.isFinite(duration) || duration <= 0) {
       return;
     }
 
-    onSubmit({ category, durationMinutes: duration, notes: notes.trim() });
+    onSubmit({ category, durationMinutes: duration, puzzlesSolved: puzzles, gamesPlayed: games, notes: notes.trim() });
     setCategory('Games & analysis');
     setDurationMinutes('30');
+    setPuzzlesSolved('0');
+    setGamesPlayed('0');
     setNotes('');
   }
 
@@ -53,6 +59,37 @@ export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
           onChange={event => setDurationMinutes(event.target.value)}
           className="w-full rounded border border-gray-700 bg-secondary px-3 py-2 text-white focus:border-accent focus:outline-none"
         />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="puzzles-solved" className="mb-2 block text-sm font-medium text-gray-300">
+            Puzzles solved <span className="font-normal text-gray-500">(optional)</span>
+          </label>
+          <input
+            id="puzzles-solved"
+            type="number"
+            min="0"
+            step="1"
+            value={puzzlesSolved}
+            onChange={event => setPuzzlesSolved(event.target.value)}
+            className="w-full rounded border border-gray-700 bg-secondary px-3 py-2 text-white focus:border-accent focus:outline-none"
+          />
+        </div>
+        <div>
+          <label htmlFor="games-played" className="mb-2 block text-sm font-medium text-gray-300">
+            Games played <span className="font-normal text-gray-500">(optional)</span>
+          </label>
+          <input
+            id="games-played"
+            type="number"
+            min="0"
+            step="1"
+            value={gamesPlayed}
+            onChange={event => setGamesPlayed(event.target.value)}
+            className="w-full rounded border border-gray-700 bg-secondary px-3 py-2 text-white focus:border-accent focus:outline-none"
+          />
+        </div>
       </div>
 
       <div>

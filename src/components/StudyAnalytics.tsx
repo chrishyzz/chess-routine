@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import {
+  BarChart,
+  Bar,
   Cell,
   Pie,
   PieChart,
   ResponsiveContainer,
   Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import { StudyCategory } from './StudySessionForm';
 
@@ -18,7 +22,7 @@ interface StudyAnalyticsProps {
   sessions: AnalyticsSession[];
 }
 
-const categoryColors: Record<StudyCategory, string> = {
+export const categoryColors: Record<StudyCategory, string> = {
   'Games & analysis': '#60a5fa',
   Tactics: '#a78bfa',
   Endgame: '#34d399',
@@ -69,6 +73,20 @@ function startOfWeek(date: Date) {
   return result;
 }
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16),
+  } : { r: 0, g: 0, b: 0 };
+}
+
+function hexToRgba(hex: string, opacity: number): string {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
 function Heatmap({ sessions }: StudyAnalyticsProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -87,23 +105,47 @@ function Heatmap({ sessions }: StudyAnalyticsProps) {
     return date <= today ? date : null;
   }));
 
+  const sessionsByDay = sessions.reduce<Record<string, typeof sessions>>((totals, session) => {
+    const key = dateKey(new Date(session.createdAt));
+    totals[key] = (totals[key] || []).concat(session);
+    return totals;
+  }, {});
+
   const minutesByDay = sessions.reduce<Record<string, number>>((totals, session) => {
     const key = dateKey(new Date(session.createdAt));
     totals[key] = (totals[key] || 0) + session.durationMinutes;
     return totals;
   }, {});
 
+  // Calculate dominant category and total minutes for each day
+  const getDominantCategory = (key: string): StudyCategory | null => {
+    const daySessions = sessionsByDay[key] || [];
+    if (daySessions.length === 0) return null;
+
+    const categoryTotals = categories.reduce<Record<StudyCategory, number>>((totals, cat) => {
+      totals[cat] = daySessions
+        .filter(s => normalizeCategory(s.category) === cat)
+        .reduce((sum, s) => sum + s.durationMinutes, 0);
+      return totals;
+    }, {} as Record<StudyCategory, number>);
+
+    let maxCategory = categories[0];
+    let maxMinutes = categoryTotals[categories[0]];
+
+    for (let i = 1; i < categories.length; i++) {
+      if (categoryTotals[categories[i]] > maxMinutes) {
+        maxCategory = categories[i];
+        maxMinutes = categoryTotals[categories[i]];
+      }
+    }
+
+    return maxMinutes > 0 ? maxCategory : null;
+  };
+
   const visibleMinutes = days
     .filter((day): day is Date => day !== null)
     .map(day => minutesByDay[dateKey(day)] || 0);
   const maxMinutes = Math.max(1, ...visibleMinutes);
-  const getIntensity = (minutes: number) => {
-    if (minutes === 0) return 'bg-gray-800';
-   if (minutes <= maxMinutes * 0.25) return 'bg-amber-950';
-if (minutes <= maxMinutes * 0.5) return 'bg-amber-800';
-if (minutes <= maxMinutes * 0.75) return 'bg-amber-600';
-return 'bg-amber-400';
-  };
 
   // Anchor scroll to the right on mount
   useEffect(() => {
@@ -118,17 +160,18 @@ return 'bg-amber-400';
 
   return (
     <section className="rounded-lg bg-primary p-4">
-      <div className="mb-4 flex items-baseline justify-between gap-4">
+      <div className="mb-4 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-baseline">
         <div>
           <h2 className="text-lg font-semibold">Daily activity</h2>
           <p className="mt-1 text-sm text-gray-400">Minutes logged over the last 16 weeks</p>
         </div>
-        <div className="hidden items-center gap-1 text-xs text-gray-500 sm:flex">
-          <span>Less</span>
-          {[0, 1, 2, 3, 4].map(level => (
-            <span key={level} className={`h-3 w-3 rounded-sm ${getIntensity(level === 0 ? 0 : maxMinutes * level / 4)}`} />
+        <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+          {categories.map(cat => (
+            <div key={cat} className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: categoryColors[cat] }} />
+              <span>{cat}</span>
+            </div>
           ))}
-          <span>More</span>
         </div>
       </div>
 
@@ -164,18 +207,140 @@ return 'bg-amber-400';
             <div className="inline-grid grid-flow-col grid-cols-[repeat(16,minmax(0,1fr))] grid-rows-7 gap-0.5 sm:gap-1">
               {days.map((day, index) => {
                 const isFuture = day === null;
-                const minutes = day === null ? 0 : minutesByDay[dateKey(day)] || 0;
+                const key = day ? dateKey(day) : null;
+                const minutes = day === null ? 0 : minutesByDay[key!] || 0;
+                const dominantCategory = day && key ? getDominantCategory(key) : null;
+                
+                let bgColor = 'bg-gray-800';
+                let title = day ? day.toLocaleDateString() : undefined;
+
+                if (isFuture) {
+                  bgColor = 'bg-gray-900/50';
+                } else if (dominantCategory && minutes > 0) {
+                  const opacity = 0.3 + (minutes / maxMinutes) * 0.7; // Opacity from 0.3 to 1.0
+                  const hexColor = categoryColors[dominantCategory];
+                  const bgStyle = {
+                    backgroundColor: hexToRgba(hexColor, opacity),
+                  };
+                  title = `${title}: ${minutes} minutes (${dominantCategory})`;
+
+                  return (
+                    <span
+                      key={day ? dateKey(day) : `future-${index}`}
+                      title={title}
+                      className="block h-4 w-4 justify-self-center rounded-sm border border-gray-700/70 sm:h-5 sm:w-5"
+                      style={bgStyle}
+                    />
+                  );
+                } else if (minutes === 0) {
+                  title = `${title}: no activity`;
+                }
+
                 return (
                   <span
                     key={day ? dateKey(day) : `future-${index}`}
-                    title={day ? `${day.toLocaleDateString()}: ${minutes} minutes` : undefined}
-                    className={`block h-4 w-4 justify-self-center rounded-sm border border-gray-700/70 sm:h-5 sm:w-5 ${isFuture ? 'bg-gray-900/50' : getIntensity(minutes)}`}
+                    title={title}
+                    className={`block h-4 w-4 justify-self-center rounded-sm border border-gray-700/70 sm:h-5 sm:w-5 ${bgColor}`}
                   />
                 );
               })}
             </div>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function formatTimeDisplay(minutes: number): string {
+  if (minutes === 0) return '0 min';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins} min`;
+  if (mins === 0) return `${hours} hr${hours > 1 ? 's' : ''}`;
+  return `${hours} hr${hours > 1 ? 's' : ''} ${mins} min`;
+}
+
+function WeeklyTimeChart({ sessions }: StudyAnalyticsProps) {
+  const today = startOfDay(new Date());
+  const currentWeekStart = startOfWeek(today);
+
+  // Generate last 12 weeks
+  const weeks = Array.from({ length: 12 }, (_, i) => {
+    const weekStart = new Date(currentWeekStart);
+    weekStart.setDate(currentWeekStart.getDate() - (11 - i) * 7);
+    return weekStart;
+  });
+
+  // Calculate total minutes per week
+  const weeklyData = weeks.map(weekStart => {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+
+    const totalMinutes = sessions.reduce((sum, session) => {
+      const sessionDate = new Date(session.createdAt);
+      if (sessionDate >= weekStart && sessionDate < weekEnd) {
+        return sum + session.durationMinutes;
+      }
+      return sum;
+    }, 0);
+
+    const weekLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    return {
+      weekStart,
+      label: weekLabel,
+      minutes: totalMinutes,
+    };
+  });
+
+  // Get this week's total
+  const thisWeekTotal = sessions.reduce((sum, session) => {
+    const sessionDate = new Date(session.createdAt);
+    if (sessionDate >= currentWeekStart && sessionDate < new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+      return sum + session.durationMinutes;
+    }
+    return sum;
+  }, 0);
+
+  const maxMinutes = Math.max(1, ...weeklyData.map(w => w.minutes));
+
+  return (
+    <section className="rounded-lg bg-primary p-4">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Weekly study time</h2>
+          <p className="mt-1 text-sm text-gray-400">Last 12 weeks of activity</p>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-3xl font-bold text-accent">{formatTimeDisplay(thisWeekTotal)}</span>
+          <span className="text-sm text-gray-400">this week</span>
+        </div>
+      </div>
+
+      <div className="h-64 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={weeklyData} margin={{ top: 8, right: 16, bottom: 24, left: 40 }}>
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 12 }}
+              stroke="#6b7280"
+              style={{ color: '#9ca3af' }}
+            />
+            <YAxis
+              tick={{ fontSize: 12 }}
+              stroke="#6b7280"
+              style={{ color: '#9ca3af' }}
+              label={{ value: 'Minutes', angle: -90, position: 'insideLeft', offset: 10, style: { fontSize: 12, color: '#9ca3af' } }}
+            />
+            <Tooltip
+              contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #374151', borderRadius: '0.5rem' }}
+              labelStyle={{ color: '#d1d5db' }}
+              formatter={(value: number) => [formatTimeDisplay(value), 'Study time']}
+              cursor={{ fill: 'rgba(251, 191, 36, 0.1)' }}
+            />
+            <Bar dataKey="minutes" fill="#c8a96e" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </section>
   );
@@ -251,6 +416,7 @@ export function StudyAnalytics({ sessions }: StudyAnalyticsProps) {
   return (
     <div className="mt-8 grid gap-6">
       <Heatmap sessions={sessions} />
+      <WeeklyTimeChart sessions={sessions} />
       <CategoryPie sessions={sessions} />
     </div>
   );

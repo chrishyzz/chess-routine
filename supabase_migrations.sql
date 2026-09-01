@@ -39,3 +39,8 @@ CREATE POLICY "Users can update their own projects"
 CREATE POLICY "Users can delete their own projects"
   ON projects FOR DELETE
   USING (auth.uid() = user_id);
+
+-- Add separate activity tracking columns to study_sessions table
+ALTER TABLE study_sessions DROP COLUMN IF EXISTS activity_count;
+ALTER TABLE study_sessions ADD COLUMN puzzles_solved INTEGER DEFAULT 0;
+ALTER TABLE study_sessions ADD COLUMN games_played INTEGER DEFAULT 0;

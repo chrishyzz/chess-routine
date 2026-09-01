@@ -9,6 +9,8 @@ interface StudySession {
   id: string;
   category: StudyCategory;
   durationMinutes: number;
+  puzzlesSolved: number;
+  gamesPlayed: number;
   notes: string;
   createdAt: string;
 }
@@ -69,7 +71,7 @@ export function Dashboard() {
 
     const { data, error: fetchError } = await supabase
   .from('study_sessions')
-  .select('id, category, duration_minutes, notes, created_at')
+  .select('id, category, duration_minutes, puzzles_solved, games_played, notes, created_at')
   .eq('user_id', user.id)
   .order('created_at', { ascending: false })
   .limit(30);
@@ -84,6 +86,8 @@ export function Dashboard() {
       id: session.id,
       category: session.category as StudyCategory,
       durationMinutes: session.duration_minutes,
+      puzzlesSolved: session.puzzles_solved || 0,
+      gamesPlayed: session.games_played || 0,
       notes: session.notes,
       createdAt: session.created_at,
     })));
@@ -116,10 +120,12 @@ export function Dashboard() {
         user_id: user.id,
         category: session.category,
         duration_minutes: session.durationMinutes,
+        puzzles_solved: session.puzzlesSolved,
+        games_played: session.gamesPlayed,
         notes: session.notes,
         created_at: createdAt,
       })
-      .select('id, category, duration_minutes, notes, created_at')
+      .select('id, category, duration_minutes, puzzles_solved, games_played, notes, created_at')
       .single();
 
     if (insertError) {
@@ -131,6 +137,8 @@ export function Dashboard() {
       id: data.id,
       category: data.category as StudyCategory,
       durationMinutes: data.duration_minutes,
+      puzzlesSolved: data.puzzles_solved || 0,
+      gamesPlayed: data.games_played || 0,
       notes: data.notes,
       createdAt: data.created_at,
     }, ...currentSessions]);
@@ -210,6 +218,8 @@ export function Dashboard() {
                           <div className="min-w-0">
                             <h3 className="font-medium">{session.category}</h3>
                             <p className="mt-1 text-sm text-gray-300">{session.durationMinutes} minutes</p>
+                            {session.puzzlesSolved > 0 && <p className="mt-1 text-sm text-gray-300">{session.puzzlesSolved} puzzles</p>}
+                            {session.gamesPlayed > 0 && <p className="mt-1 text-sm text-gray-300">{session.gamesPlayed} games</p>}
                             {session.notes && <p className="mt-2 break-words text-sm text-gray-400">{session.notes}</p>}
                           </div>
                           <div className="flex shrink-0 items-center gap-3">
