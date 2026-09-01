@@ -302,8 +302,6 @@ function WeeklyTimeChart({ sessions }: StudyAnalyticsProps) {
     return sum;
   }, 0);
 
-  const maxMinutes = Math.max(1, ...weeklyData.map(w => w.minutes));
-
   return (
     <section className="rounded-lg bg-primary p-4">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
