@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { Dashboard } from './pages/Dashboard';
+import { About } from './components/About';
 import { Loader } from './components/Loader';
 
 function App() {
   const { user, loading, error } = useAuth();
+  const [currentView, setCurrentView] = useState<'dashboard' | 'about'>('dashboard');
 
   if (loading) {
     return <Loader />;
@@ -21,7 +24,15 @@ function App() {
     );
   }
 
-  return user ? <Dashboard /> : <LoginPage />;
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  if (currentView === 'about') {
+    return <About onBack={() => setCurrentView('dashboard')} />;
+  }
+
+  return <Dashboard onOpenAbout={() => setCurrentView('about')} />;
 }
 
 export default App;
