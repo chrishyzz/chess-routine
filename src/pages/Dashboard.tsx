@@ -16,6 +16,15 @@ interface StudySession {
   createdAt: string;
 }
 
+interface AnalyticsSession {
+  category: StudyCategory;
+  durationMinutes: number;
+  puzzlesSolved: number;
+  gamesPlayed: number;
+  notes: string;
+  createdAt: string;
+}
+
 function getDateLabel(dateStr: string): string {
   const date = new Date(dateStr);
   const today = new Date();
@@ -53,7 +62,7 @@ function groupSessionsByDate(sessions: StudySession[]): SessionGroup[] {
   for (const session of sessions) {
     const key = getLocalDateKey(session.createdAt);
     let existing = groups.find(g => g.key === key);
-    
+
     if (!existing) {
       existing = {
         label: getDateLabel(session.createdAt),
@@ -65,7 +74,7 @@ function groupSessionsByDate(sessions: StudySession[]): SessionGroup[] {
       };
       groups.push(existing);
     }
-    
+
     existing.sessions.push(session);
     existing.totalMinutes += session.durationMinutes;
     existing.totalPuzzles += session.puzzlesSolved;
@@ -78,12 +87,14 @@ function groupSessionsByDate(sessions: StudySession[]): SessionGroup[] {
 export function Dashboard() {
   const { user, logout } = useAuth();
   const [sessions, setSessions] = useState<StudySession[]>([]);
+  const [analyticsSessions, setAnalyticsSessions] = useState<AnalyticsSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSessions = async () => {
     if (!user) {
       setSessions([]);
+      setAnalyticsSessions([]);
       setIsLoading(false);
       return;
     }
@@ -91,20 +102,27 @@ export function Dashboard() {
     setIsLoading(true);
     setError(null);
 
-    const { data, error: fetchError } = await supabase
-  .from('study_sessions')
-  .select('id, category, duration_minutes, puzzles_solved, games_played, notes, created_at')
-  .eq('user_id', user.id)
-  .order('created_at', { ascending: false })
-  .limit(30);
+    const [displayResult, analyticsResult] = await Promise.all([
+      supabase
+        .from('study_sessions')
+        .select('id, category, duration_minutes, puzzles_solved, games_played, notes, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30),
+      supabase
+        .from('study_sessions')
+        .select('category, duration_minutes, puzzles_solved, games_played, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
+    ]);
 
-    if (fetchError) {
-      setError(fetchError.message);
+    if (displayResult.error) {
+      setError(displayResult.error.message);
       setIsLoading(false);
       return;
     }
 
-    setSessions(data.map(session => ({
+    setSessions(displayResult.data.map(session => ({
       id: session.id,
       category: session.category as StudyCategory,
       durationMinutes: session.duration_minutes,
@@ -113,6 +131,16 @@ export function Dashboard() {
       notes: session.notes,
       createdAt: session.created_at,
     })));
+
+    setAnalyticsSessions((analyticsResult.data || []).map(session => ({
+      category: session.category as StudyCategory,
+      durationMinutes: session.duration_minutes,
+      puzzlesSolved: session.puzzles_solved || 0,
+      gamesPlayed: session.games_played || 0,
+      notes: '',
+      createdAt: session.created_at,
+    })));
+
     setIsLoading(false);
   };
 
@@ -155,7 +183,7 @@ export function Dashboard() {
       return;
     }
 
-    setSessions(currentSessions => [{
+    const newSession = {
       id: data.id,
       category: data.category as StudyCategory,
       durationMinutes: data.duration_minutes,
@@ -163,7 +191,10 @@ export function Dashboard() {
       gamesPlayed: data.games_played || 0,
       notes: data.notes,
       createdAt: data.created_at,
-    }, ...currentSessions]);
+    };
+
+    setSessions(currentSessions => [newSession, ...currentSessions]);
+    setAnalyticsSessions(currentSessions => [{ ...newSession, notes: '' }, ...currentSessions]);
   }
 
   async function deleteSession(sessionId: string) {
@@ -184,6 +215,7 @@ export function Dashboard() {
     }
 
     setSessions(currentSessions => currentSessions.filter(session => session.id !== sessionId));
+    setAnalyticsSessions(currentSessions => currentSessions.filter(session => session.createdAt !== sessionId));
   }
 
   const sessionGroups = groupSessionsByDate(sessions);
@@ -214,13 +246,17 @@ export function Dashboard() {
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
         </section>
 
-        {user && <div className="mt-6"><Projects userId={user.id} error={error} onError={setError} onSessionLogged={() => void fetchSessions()} /></div>}
+        {user && (
+          <div className="mt-6">
+            <Projects userId={user.id} error={error} onError={setError} onSessionLogged={() => void fetchSessions()} />
+          </div>
+        )}
 
         <div className="mb-6" />
 
-        {user && <Goals userId={user.id} sessions={sessions} error={error} onError={setError} />}
+        {user && <Goals userId={user.id} sessions={analyticsSessions} error={error} onError={setError} />}
 
-        {!isLoading && <StudyAnalytics sessions={sessions} />}
+        {!isLoading && <StudyAnalytics sessions={analyticsSessions} />}
 
         <section className="mt-8 min-w-0">
           <h2 className="mb-4 text-xl font-semibold">Past sessions</h2>
@@ -234,14 +270,14 @@ export function Dashboard() {
             <div className="min-w-0 space-y-6">
               {sessionGroups.map((group, groupIndex) => (
                 <div key={group.key}>
-               <div className={`mb-2 flex items-center justify-between text-xs tracking-widest ${groupIndex === 0 ? '' : 'mt-6'}`}>
-                <span className="uppercase text-accent">{group.label}</span>
-                <span className="text-gray-400">
-                  {group.totalMinutes} mins
-                  {group.totalPuzzles > 0 && ` • ${group.totalPuzzles} puzzles`}
-                  {group.totalGames > 0 && ` • ${group.totalGames} games`}
-                </span>
-              </div>
+                  <div className={`mb-2 flex items-center justify-between text-xs tracking-widest ${groupIndex === 0 ? '' : 'mt-6'}`}>
+                    <span className="uppercase text-accent">{group.label}</span>
+                    <span className="text-gray-400">
+                      {group.totalMinutes} mins
+                      {group.totalPuzzles > 0 && ` • ${group.totalPuzzles} puzzles`}
+                      {group.totalGames > 0 && ` • ${group.totalGames} games`}
+                    </span>
+                  </div>
                   <div className="min-w-0 divide-y divide-gray-800 overflow-hidden rounded-lg bg-primary">
                     {group.sessions.map(session => (
                       <article key={session.id} className="min-w-0 px-4 py-4 sm:px-5">
@@ -257,13 +293,13 @@ export function Dashboard() {
                             <time className="text-sm text-gray-500" dateTime={session.createdAt}>
                               {new Date(session.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </time>
-                          <button 
-  type="button" 
-  onClick={() => void deleteSession(session.id)} 
-  className="text-sm text-gray-500 transition hover:text-red-400"
->
-  Delete
-</button>
+                            <button
+                              type="button"
+                              onClick={() => void deleteSession(session.id)}
+                              className="text-sm text-gray-500 transition hover:text-red-400"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
                       </article>
