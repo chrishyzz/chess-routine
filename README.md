@@ -1,4 +1,4 @@
-# Chess Routine: An easy tracking app
+# Chess Routine: An app for self-directed chess training.
 
 A simple, light-weight way to track chess study, inspired by fitness apps.
 
@@ -8,44 +8,6 @@ A simple, light-weight way to track chess study, inspired by fitness apps.
 - Log different types of study – from solving puzzles to playing or reading a book.
 - Visual charts showing your progress over time
 - Use the app seamlessly across devices
-
-## Setup & Installation
-
-### Prerequisites
-
-- Node.js 18+
-- npm or pnpm
-
-### Installation
-
-1. Install dependencies:
-
-```bash
-cd app
-npm install
-# or
-pnpm install
-```
-
-2. Start development server:
-
-```bash
-npm run dev
-# or
-pnpm dev
-```
-
-The app will open at `http://localhost:5173`
-
-### Build for Production
-
-```bash
-npm run build
-# or
-pnpm build
-```
-
-This generates an optimized build in the `dist/` directory.
 
 ## How to Use
 
