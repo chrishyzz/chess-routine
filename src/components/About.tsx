@@ -24,7 +24,7 @@ export function About({ onBack }: AboutProps) {
             Chess Routine is a minimalist app to track chess study in the same way you might use a fitness app for the gym.
           </p>
           <p className="text-gray-300 text-sm leading-relaxed">
-            Light-weight, flexible and free, you can log tasks – like solving puzzles, playing games or reading a book – and try to balance your time between studying openings, endgames or whatever else.
+            Light-weight and flexible, you can log tasks – like solving puzzles, playing games or reading a book – and try to balance your time between studying openings, endgames or whatever else.
           </p>
           <p className="text-gray-300 text-sm leading-relaxed">
             Visuals show how you’re actually spending your time and provide motivation to build consistent habits.
@@ -35,14 +35,14 @@ export function About({ onBack }: AboutProps) {
           <h2 className="text-xl font-semibold text-white">Recommended resources</h2>
           
           <p className="text-gray-300 text-sm leading-relaxed">
-            Ben Johnson has a <a href="https://www.perpetualchesspod.com/book-recommendations" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">mega list of resources, grouped by category</a>.
+            Ben Johnson has a <a href="https://www.perpetualchesspod.com/book-recommendations" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">mega list of resources, grouped by rating</a>.
           </p>
 
           <div className="space-y-4 text-sm text-gray-300">
             <div>
               <h3 className="font-semibold text-white mb-1">Games & Analysis</h3>
               <p className="leading-relaxed">
-                This category is for your own games only. Playing and studying on Lichess is great. You might also spar positions with bots on Chessiverse.
+                This category is for your own games only. Playing and studying on Lichess is great; the ChessDojo book about <a href="https://www.amazon.co.uk/How-Analyze-Your-Games-ChessDojo/dp/B0DP2X1T9D" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">how to study your own games</a> is a good resource. You might also spar positions with bots on <a href="https://chessiverse.com/" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">Chessiverse</a>.
               </p>
             </div>
 
