@@ -1,6 +1,6 @@
-# Chess Routine: An app for self-directed chess training.
+# Chess Routine: A simple way to track chess study, inspired by fitness apps.
 
-A simple, light-weight way to track chess study, inspired by fitness apps.
+An app for self-directed chess training.
 
 ## Features
 
