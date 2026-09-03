@@ -49,28 +49,28 @@ export function About({ onBack }: AboutProps) {
             <div>
               <h3 className="font-semibold text-white mb-1">Tactics</h3>
               <p className="leading-relaxed">
-                Puzzles are easy to find. There’s Lichess and ChessTempo. I adore <a href="https://lichess.org/streak" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">Puzzle Streak</a> on Lichess. <a href="https://www.discochess.com/" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">DiscoChess</a> is a fun way to do the Woodpecker method. For a little more comprehensive calculation training, I’ve been enjoying <a href="https://calculationtraining.com/" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">Calculation Training</a>.
+                There are endless options to practice tactics; make sure to balance solving lots of easy puzzles (for pattern recognition) and focusing on more difficult ones (calculation). There’s Lichess and ChessTempo. I adore <a href="https://lichess.org/streak" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">Puzzle Streak</a> on Lichess. <a href="https://www.discochess.com/" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">DiscoChess</a> is a fun way to do the Woodpecker method. For a little more comprehensive calculation training, I’ve been enjoying <a href="https://calculationtraining.com/" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">Calculation Training</a>.
               </p>
             </div>
 
             <div>
               <h3 className="font-semibold text-white mb-1">Endgames</h3>
               <p className="leading-relaxed">
-                Learn the basic endgame patterns from Lichess. Then maybe try Silman’s book Complete Endgame Course. Practice them (regular) via <a href="https://app.endgametrainer.com/" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">Endgame Trainer</a>. Look at <a href="https://www.chessgames.com/perl/chesscollection?cid=1002457" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">Capablanca’s games</a>.
+                Learn the basic endgame patterns from Silman’s book Complete Endgame Course. Practice them (regularly) via <a href="https://app.endgametrainer.com/" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">Endgame Trainer</a>. Look at <a href="https://www.chessgames.com/perl/chesscollection?cid=1002457" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">Capablanca’s games</a>.
               </p>
             </div>
 
             <div>
               <h3 className="font-semibold text-white mb-1">Middlegames</h3>
               <p className="leading-relaxed">
-                Michael Steen’s Simple Chess is a good book. As is Silman’s Reassess Your Chess. I also think looking over master games is great for this.
+                Michael Steen’s Simple Chess is a good book; as is Silman’s Reassess Your Chess. I also think looking over master games is great for this.
               </p>
             </div>
 
             <div>
               <h3 className="font-semibold text-white mb-1">Openings</h3>
               <p className="leading-relaxed">
-                Make a simple repertoire in a Lichess study and practice it on ChessTempo. Look at master games in your opening to learn middlegame and endgame ideas that come from the opening.
+                Make a simple repertoire in a Lichess study and practice it on ChessTempo; slowly add more moves and complexity in response to moves you actually face from your own games. Look at master games in your opening to learn middlegame and endgame ideas that come from the opening.
               </p>
             </div>
           </div>
