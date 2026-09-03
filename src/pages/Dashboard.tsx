@@ -17,6 +17,7 @@ interface StudySession {
 }
 
 interface AnalyticsSession {
+  id: string;
   category: StudyCategory;
   durationMinutes: number;
   puzzlesSolved: number;
@@ -84,7 +85,11 @@ function groupSessionsByDate(sessions: StudySession[]): SessionGroup[] {
   return groups;
 }
 
-export function Dashboard() {
+interface DashboardProps {
+  onOpenAbout: () => void;
+}
+
+export function Dashboard({ onOpenAbout }: DashboardProps) {
   const { user, logout } = useAuth();
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [analyticsSessions, setAnalyticsSessions] = useState<AnalyticsSession[]>([]);
@@ -111,7 +116,7 @@ export function Dashboard() {
         .limit(30),
       supabase
         .from('study_sessions')
-        .select('category, duration_minutes, puzzles_solved, games_played, created_at')
+        .select('id, category, duration_minutes, puzzles_solved, games_played, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
     ]);
@@ -133,6 +138,7 @@ export function Dashboard() {
     })));
 
     setAnalyticsSessions((analyticsResult.data || []).map(session => ({
+      id: session.id,
       category: session.category as StudyCategory,
       durationMinutes: session.duration_minutes,
       puzzlesSolved: session.puzzles_solved || 0,
@@ -215,7 +221,7 @@ export function Dashboard() {
     }
 
     setSessions(currentSessions => currentSessions.filter(session => session.id !== sessionId));
-    setAnalyticsSessions(currentSessions => currentSessions.filter(session => session.createdAt !== sessionId));
+    setAnalyticsSessions(currentSessions => currentSessions.filter(session => session.id !== sessionId));
   }
 
   const sessionGroups = groupSessionsByDate(sessions);
@@ -228,13 +234,22 @@ export function Dashboard() {
             <h1 className="text-2xl font-bold">Chess Routine</h1>
             <p className="mt-1 text-sm text-gray-400">Welcome, {user?.username}</p>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="rounded bg-gray-700 px-3 py-2 text-sm text-white transition hover:bg-gray-600"
-          >
-            Log out
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={onOpenAbout}
+              className="text-sm text-gray-400 transition hover:text-white"
+            >
+              About
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded bg-gray-700 px-3 py-2 text-sm text-white transition hover:bg-gray-600"
+            >
+              Log out
+            </button>
+          </div>
         </div>
       </header>
 
