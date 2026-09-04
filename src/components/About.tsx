@@ -11,7 +11,7 @@ export function About({ onBack }: AboutProps) {
           <button
             type="button"
             onClick={onBack}
-            className="text-sm text-gray-400 transition hover:text-white"
+            className="text-base text-gray-400 transition hover:text-white"
           >
             ← Back to Dashboard
           </button>
@@ -20,13 +20,13 @@ export function About({ onBack }: AboutProps) {
       <main className="mx-auto max-w-3xl px-4 py-8 space-y-6">
         <div className="rounded-lg bg-primary p-6 border border-gray-800 space-y-4">
           <h2 className="text-xl font-semibold text-white">About this app</h2>
-          <p className="text-gray-300 text-sm leading-relaxed">
+          <p className="text-gray-300 text-base leading-relaxed">
             Chess Routine is a minimalist app to track chess study in the same way you might use a fitness app for the gym.
           </p>
-          <p className="text-gray-300 text-sm leading-relaxed">
+          <p className="text-gray-300 text-base leading-relaxed">
             Light-weight and flexible, you can log tasks – like solving puzzles, playing games or reading a book – and try to balance your time between studying openings, endgames or whatever else.
           </p>
-          <p className="text-gray-300 text-sm leading-relaxed">
+          <p className="text-gray-300 text-base leading-relaxed">
             Visuals show how you’re actually spending your time and provide motivation to build consistent habits.
           </p>
         </div>
@@ -34,11 +34,11 @@ export function About({ onBack }: AboutProps) {
         <div className="rounded-lg bg-primary p-6 border border-gray-800 space-y-6">
           <h2 className="text-xl font-semibold text-white">Recommended resources</h2>
           
-          <p className="text-gray-300 text-sm leading-relaxed">
+          <p className="text-gray-300 text-base leading-relaxed">
             Ben Johnson has a <a href="https://www.perpetualchesspod.com/book-recommendations" target="_blank" rel="noopener noreferrer" className="text-accent underline hover:opacity-80">mega list of resources, grouped by rating</a>.
           </p>
 
-          <div className="space-y-4 text-sm text-gray-300">
+          <div className="space-y-4 text-base text-gray-300">
             <div>
               <h3 className="font-semibold text-white mb-1">Games & Analysis</h3>
               <p className="leading-relaxed">
