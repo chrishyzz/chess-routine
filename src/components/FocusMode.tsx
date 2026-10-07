@@ -17,14 +17,14 @@ interface FocusModeProps {
   onError: (error: string | null) => void;
 }
 
-const categories: StudyCategory[] = ['Openings', 'Endgame', 'Tactics', 'Middlegame', 'Games & analysis'];
+const categories: StudyCategory[] = ['Games & analysis', 'Tactics', 'Endgame', 'Middlegame', 'Openings'];
 
 export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusModeProps) {
   const [sprint, setSprint] = useState<FocusSprint | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
-  const [category, setCategory] = useState<StudyCategory>('Openings');
+  const [category, setCategory] = useState<StudyCategory>('Games & analysis');
   const [durationType, setDurationType] = useState<'time' | 'volume'>('time');
   const [durationValue, setDurationValue] = useState('7');
   const [targetRatio, setTargetRatio] = useState('70');
@@ -208,7 +208,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
           onClick={() => setShowSetup(true)}
           className="w-full rounded-lg border border-dashed border-amber-400/40 bg-primary/70 px-4 py-4 text-left transition hover:border-amber-300"
         >
-          <span className="block font-semibold text-amber-200">Start a Focus Mode / Priority Sprint</span>
+          <span className="block font-semibold text-amber-200">Start Focus Mode</span>
           <span className="mt-1 block text-sm text-gray-400">Choose a priority category and set a focused training goal.</span>
         </button>
       ) : (
@@ -291,7 +291,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
           <button
             type="submit"
             disabled={isSaving}
-            className="rounded bg-amber-400 px-4 py-2 font-semibold text-gray-950 transition hover:bg-amber-300 disabled:opacity-50"
+            className="rounded bg-accent px-4 py-2 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
           >
             {isSaving ? 'Starting...' : 'Activate Focus Mode'}
           </button>
