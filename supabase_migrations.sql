@@ -10,6 +10,7 @@ CREATE TABLE projects (
   current_progress NUMERIC,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   archived_at TIMESTAMP WITH TIME ZONE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   CONSTRAINT progress_fields_check CHECK (
     (type = 'time' AND unit_name IS NULL AND goal IS NULL AND current_progress IS NULL) OR
     (type = 'progress' AND unit_name IS NOT NULL AND goal IS NOT NULL AND current_progress IS NOT NULL)
@@ -18,6 +19,13 @@ CREATE TABLE projects (
 
 -- Create index on user_id and archived_at for efficient querying
 CREATE INDEX idx_projects_user_id_archived ON projects(user_id, archived_at);
+
+-- Add persisted active/backlog state for existing project tables.
+ALTER TABLE public.projects
+  ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+CREATE INDEX IF NOT EXISTS idx_projects_user_active
+  ON public.projects(user_id, is_active)
+  WHERE archived_at IS NULL;
 
 -- Enable RLS (Row Level Security)
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;

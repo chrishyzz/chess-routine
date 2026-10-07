@@ -38,6 +38,7 @@ export interface Project {
   archivedAt: string | null;
   sortOrder: number;
   resourceUrl: string | null;
+  isActive: boolean;
 }
 
 interface ProjectsProps {
@@ -437,6 +438,8 @@ function ProjectCard({
   dragAttributes,
   dragListeners,
   priorityCategory,
+  onToggleActive,
+  isUpdatingStatus,
 }: {
   project: Project;
   userId: string;
@@ -446,6 +449,8 @@ function ProjectCard({
   dragAttributes?: DraggableAttributes;
   dragListeners?: DraggableSyntheticListeners;
   priorityCategory: StudyCategory | null;
+  onToggleActive: (project: Project) => void;
+  isUpdatingStatus: boolean;
 }) {
   const [showLogForm, setShowLogForm] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -604,6 +609,14 @@ function ProjectCard({
           </button>
 
           <div className="flex gap-1 text-sm">
+            <button
+              type="button"
+              onClick={() => onToggleActive(project)}
+              disabled={isUpdatingStatus}
+              className="text-gray-500 transition hover:text-amber-300 disabled:cursor-wait disabled:opacity-50"
+            >
+              {isUpdatingStatus ? 'Updating...' : project.isActive ? 'Move to backlog' : 'Promote to active'}
+            </button>
             {!showDeleteConfirm && (
               <button
                 type="button"
@@ -678,6 +691,8 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewForm, setShowNewForm] = useState(false);
+  const [isBacklogOpen, setIsBacklogOpen] = useState(false);
+  const [updatingProjectId, setUpdatingProjectId] = useState<string | null>(null);
 
  const sensors = useSensors(
   useSensor(PointerSensor, {
@@ -702,7 +717,7 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
 
     const { data, error: fetchError } = await supabase
       .from('projects')
-      .select('id, user_id, title, category, type, unit_name, goal, current_progress, created_at, archived_at, sort_order, resource_url')
+      .select('id, user_id, title, category, type, unit_name, goal, current_progress, created_at, archived_at, sort_order, resource_url, is_active')
       .eq('user_id', userId)
       .is('archived_at', null)
       .order('sort_order', { ascending: true });
@@ -747,6 +762,7 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
       archivedAt: project.archived_at,
       sortOrder: project.sort_order,
       resourceUrl: project.resource_url,
+      isActive: project.is_active,
     }));
 
     setProjects(projectsWithTime);
@@ -757,6 +773,37 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
     void fetchProjects();
   }, [fetchProjects]);
 
+  const activeProjects = projects.filter(project => project.isActive);
+  const backlogProjects = projects.filter(project => !project.isActive);
+
+  async function toggleProjectStatus(project: Project) {
+    setUpdatingProjectId(project.id);
+    onError(null);
+    const { data, error: updateError } = await supabase
+      .from('projects')
+      .update({ is_active: !project.isActive })
+      .eq('id', project.id)
+      .eq('user_id', userId)
+      .select('id, is_active')
+      .maybeSingle();
+
+    if (updateError) {
+      onError(`Unable to update project priority: ${updateError.message}`);
+      setUpdatingProjectId(null);
+      return;
+    }
+    if (!data) {
+      onError('Unable to update project priority. The project may have been deleted or you may not have permission to change it.');
+      setUpdatingProjectId(null);
+      return;
+    }
+
+    setProjects(currentProjects => currentProjects.map(item =>
+      item.id === project.id ? { ...item, isActive: data.is_active } : item
+    ));
+    setUpdatingProjectId(null);
+  }
+
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
@@ -764,17 +811,20 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
       return;
     }
 
-    const oldIndex = projects.findIndex(p => p.id === active.id);
-    const newIndex = projects.findIndex(p => p.id === over.id);
+    const oldIndex = activeProjects.findIndex(p => p.id === active.id);
+    const newIndex = activeProjects.findIndex(p => p.id === over.id);
 
     if (oldIndex === -1 || newIndex === -1) return;
 
     // Optimistically update local state
-    const newProjects = arrayMove(projects, oldIndex, newIndex);
-    setProjects(newProjects);
+    const newActiveProjects = arrayMove(activeProjects, oldIndex, newIndex);
+    setProjects(currentProjects => [
+      ...newActiveProjects,
+      ...currentProjects.filter(project => !project.isActive),
+    ]);
 
-    // Update sort_order for all affected projects
-    const updates = newProjects.map((project, index) =>
+    // Keep queue ordering independent of backlog ordering.
+    const updates = newActiveProjects.map((project, index) =>
       supabase.from('projects').update({ sort_order: index }).eq('id', project.id)
     );
 
@@ -794,39 +844,18 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
     return null;
   }
 
-  if (projects.length === 0 && !showNewForm) {
-    return (
-      <section className="mb-8">
-        {showNewForm && (
-          <div className="mb-4">
-            <NewProjectForm
-              userId={userId}
-              onSuccess={() => {
-                setShowNewForm(false);
-                void fetchProjects();
-              }}
-              onCancel={() => setShowNewForm(false)}
-            />
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => setShowNewForm(true)}
-          className="text-sm text-gray-400 underline transition hover:text-gray-300"
-        >
-          + New Project
-        </button>
-      </section>
-    );
-  }
-
   return (
     <section className="mb-8">
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
-      {projects.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-gray-700 px-5 py-8 text-center text-sm text-gray-400">
-          No active projects. Create one to get started!
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 className="text-lg font-semibold">Active projects</h2>
+        <span className="text-xs text-gray-500">{activeProjects.length} in priority queue</span>
+      </div>
+
+      {activeProjects.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-gray-700 px-5 py-6 text-center text-sm text-gray-400">
+          No active projects. Promote one from your backlog or create a project.
         </p>
       ) : (
         <DndContext
@@ -835,17 +864,19 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={projects.map(p => p.id)}
+            items={activeProjects.map(p => p.id)}
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-4">
-              {projects.map((project) => (
+              {activeProjects.map((project) => (
                 <SortableProjectCard
                   key={project.id}
                   id={project.id}
                   project={project}
                   userId={userId}
                   priorityCategory={priorityCategory}
+                  onToggleActive={toggleProjectStatus}
+                  isUpdatingStatus={updatingProjectId === project.id}
                   onUpdate={() => {
                     void fetchProjects();
                     onSessionLogged();
@@ -857,6 +888,41 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
           </SortableContext>
         </DndContext>
       )}
+
+      <div className="mt-5 overflow-hidden rounded-lg border border-gray-800 bg-primary/60">
+        <button
+          type="button"
+          aria-expanded={isBacklogOpen}
+          onClick={() => setIsBacklogOpen(open => !open)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-gray-800/50"
+        >
+          <span className="font-medium text-gray-300">Project backlog ({backlogProjects.length})</span>
+          <span className="text-sm text-gray-500">{isBacklogOpen ? 'Hide' : 'Show'} <span aria-hidden="true">{isBacklogOpen ? '−' : '+'}</span></span>
+        </button>
+        {isBacklogOpen && (
+          <div className="space-y-4 border-t border-gray-800 p-4">
+            {backlogProjects.length === 0 ? (
+              <p className="text-sm text-gray-500">Your backlog is empty.</p>
+            ) : (
+              backlogProjects.map(project => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  userId={userId}
+                  priorityCategory={priorityCategory}
+                  onToggleActive={toggleProjectStatus}
+                  isUpdatingStatus={updatingProjectId === project.id}
+                  onUpdate={() => {
+                    void fetchProjects();
+                    onSessionLogged();
+                  }}
+                  onError={onError}
+                />
+              ))
+            )}
+          </div>
+        )}
+      </div>
 
       {showNewForm && (
         <div className="mt-6">
