@@ -206,9 +206,9 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
         <button
           type="button"
           onClick={() => setShowSetup(true)}
-          className="relative w-full overflow-hidden rounded-lg border border-[#c8a96e]/50 bg-[#c8a96e] px-4 py-4 text-center font-semibold text-[#161a1f] shadow-[0_8px_24px_rgba(200,169,110,0.12)] transition duration-300 hover:brightness-105 hover:shadow-[0_10px_28px_rgba(200,169,110,0.18)]"
+          className="relative w-full overflow-hidden rounded-lg border border-gray-800 bg-primary/60 px-4 py-4 text-center font-semibold text-gray-100 transition duration-300 hover:border-[#c8a96e]/40 hover:bg-primary/80"
           style={{
-            backgroundImage: 'linear-gradient(to right, rgba(200, 169, 110, 0.92) 0%, rgba(200, 169, 110, 0.82) 100%)',
+            backgroundImage: 'linear-gradient(to right, rgba(200, 169, 110, 0.09) 0%, rgba(200, 169, 110, 0.025) 100%)',
           }}
         >
           <span className="relative z-10">Focus Mode</span>
