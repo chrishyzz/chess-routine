@@ -206,10 +206,9 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
         <button
           type="button"
           onClick={() => setShowSetup(true)}
-          className="w-full rounded-lg border border-accent/40 bg-accent/10 px-4 py-4 text-center transition hover:border-accent/70 hover:bg-accent/15"
+          className="w-full rounded-lg border border-accent bg-accent px-4 py-4 text-center font-semibold text-white transition hover:opacity-90"
         >
-          <span className="block font-semibold text-amber-200">Start Focus Mode</span>
-          <span className="mt-1 block text-sm text-gray-400">Choose a focus category and set a focused training goal.</span>
+          Focus Mode
         </button>
       ) : (
         <form onSubmit={activateFocusMode} className="space-y-4 rounded-lg border border-amber-400/40 bg-primary p-4 sm:p-5">
