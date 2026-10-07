@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import { supabase } from '../lib/supabase';
+import { categories, categoryColors } from '../lib/categoryColors';
 import { StudyCategory } from './StudySessionForm';
 import { FocusModeConfig } from './FocusMode';
 
@@ -32,15 +33,6 @@ interface CategoryPieProps extends StudyAnalyticsProps {
   userId: string;
 }
 
-export const categoryColors: Record<StudyCategory, string> = {
-  'Games & analysis': '#60a5fa',
-  Tactics: '#a78bfa',
-  Endgame: '#34d399',
-  Middlegame: '#fbbf24',
-  Openings: '#f87171',
-};
-
-const categories = Object.keys(categoryColors) as StudyCategory[];
 const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function normalizeCategory(category: string): StudyCategory | null {

@@ -20,6 +20,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { supabase } from '../lib/supabase';
+import { categoryColors } from '../lib/categoryColors';
 import { StudyCategory } from './StudySessionForm';
 
 export type ProjectType = 'progress' | 'time';
@@ -534,7 +535,11 @@ function ProjectCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-3">
             <h3 className="font-semibold text-white">{project.title}</h3>
-            <span className="text-xs uppercase tracking-wider text-gray-400">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-700/80 bg-gray-900/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+              style={{ color: categoryColors[project.category] }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: categoryColors[project.category] }} />
               {project.category}
             </span>
             {project.category === focusCategory && (

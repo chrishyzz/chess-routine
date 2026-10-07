@@ -5,6 +5,7 @@ import { StudyAnalytics } from '../components/StudyAnalytics';
 import { Projects } from '../components/Projects';
 import { Goals } from '../components/Goals';
 import { supabase } from '../lib/supabase';
+import { categoryColors } from '../lib/categoryColors';
 import { FocusMode, FocusModeConfig } from '../components/FocusMode';
 
 interface StudySession {
@@ -323,7 +324,13 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
                       <article key={session.id} className="min-w-0 px-4 py-4 sm:px-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <h3 className="font-medium">{session.category}</h3>
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-full border border-gray-700/80 bg-gray-900/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                              style={{ color: categoryColors[session.category] }}
+                            >
+                              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: categoryColors[session.category] }} />
+                              {session.category}
+                            </span>
                             <p className="mt-1 text-sm text-gray-300">{session.durationMinutes} minutes</p>
                             {session.puzzlesSolved > 0 && <p className="mt-1 text-sm text-gray-300">{session.puzzlesSolved} puzzles</p>}
                             {session.gamesPlayed > 0 && <p className="mt-1 text-sm text-gray-300">{session.gamesPlayed} games</p>}
