@@ -47,3 +47,14 @@ ALTER TABLE study_sessions ADD COLUMN games_played INTEGER DEFAULT 0;
 
 -- Add cadence field to goals table
 ALTER TABLE goals ADD COLUMN cadence TEXT NOT NULL DEFAULT 'daily' CHECK (cadence IN ('daily', 'weekly'));
+
+-- Run this migration separately in Supabase before testing.
+create table category_targets (
+  id uuid default gen_random_uuid() primary key,
+  user_id text not null,
+  category text not null,
+  target_percentage integer not null,
+  created_at timestamptz default now(),
+  unique(user_id, category)
+);
+alter table category_targets disable row level security;

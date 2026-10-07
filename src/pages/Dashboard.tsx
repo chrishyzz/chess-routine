@@ -271,7 +271,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
 
         {user && <Goals userId={user.id} sessions={analyticsSessions} error={error} onError={setError} />}
 
-        {!isLoading && <StudyAnalytics sessions={analyticsSessions} />}
+        {!isLoading && <StudyAnalytics sessions={analyticsSessions} userId={user?.id ?? ''} />}
 
         <section className="mt-8 min-w-0">
           <h2 className="mb-4 text-xl font-semibold">Past sessions</h2>

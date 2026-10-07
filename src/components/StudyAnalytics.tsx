@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { supabase } from '../lib/supabase';
 import { StudyCategory } from './StudySessionForm';
 
 export interface AnalyticsSession {
@@ -22,6 +23,10 @@ export interface AnalyticsSession {
 
 interface StudyAnalyticsProps {
   sessions: AnalyticsSession[];
+}
+
+interface CategoryPieProps extends StudyAnalyticsProps {
+  userId: string;
 }
 
 export const categoryColors: Record<StudyCategory, string> = {
@@ -452,8 +457,25 @@ function WeeklyTimeChart({ sessions }: StudyAnalyticsProps) {
   );
 }
 
-function CategoryPie({ sessions }: StudyAnalyticsProps) {
+function CategoryPie({ sessions, userId }: CategoryPieProps) {
   const [range, setRange] = useState<'7d' | 'all'>('7d');
+  const [showTargetEditor, setShowTargetEditor] = useState(false);
+  const [targets, setTargets] = useState<Record<StudyCategory, number | null>>({
+    'Games & analysis': null,
+    Tactics: null,
+    Endgame: null,
+    Middlegame: null,
+    Openings: null,
+  });
+  const [targetInputs, setTargetInputs] = useState<Record<StudyCategory, string>>({
+    'Games & analysis': '',
+    Tactics: '',
+    Endgame: '',
+    Middlegame: '',
+    Openings: '',
+  });
+  const [targetError, setTargetError] = useState<string | null>(null);
+  const [isSavingTargets, setIsSavingTargets] = useState(false);
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const filteredSessions = range === 'all'
     ? sessions
@@ -463,8 +485,115 @@ function CategoryPie({ sessions }: StudyAnalyticsProps) {
     value: filteredSessions
       .filter(session => normalizeCategory(session.category) === category)
       .reduce((sum, session) => sum + session.durationMinutes, 0),
-  })).filter(item => item.value > 0);
+  }));
   const totalMinutes = totals.reduce((sum, item) => sum + item.value, 0);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    let active = true;
+    const fetchTargets = async () => {
+      const { data, error } = await supabase
+        .from('category_targets')
+        .select('category, target_percentage')
+        .eq('user_id', userId);
+
+      if (!active) return;
+      if (error) {
+        setTargetError(error.message);
+        return;
+      }
+
+      const nextTargets = Object.fromEntries(
+        categories.map(category => [category, null])
+      ) as Record<StudyCategory, number | null>;
+
+      for (const row of data || []) {
+        if (categories.includes(row.category as StudyCategory)) {
+          nextTargets[row.category as StudyCategory] = row.target_percentage;
+        }
+      }
+
+      setTargets(nextTargets);
+      setTargetInputs(Object.fromEntries(
+        categories.map(category => [category, nextTargets[category] === null ? '' : String(nextTargets[category])])
+      ) as Record<StudyCategory, string>);
+    };
+
+    void fetchTargets();
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  function openTargetEditor() {
+    setTargetInputs(Object.fromEntries(
+      categories.map(category => [category, targets[category] === null ? '' : String(targets[category])])
+    ) as Record<StudyCategory, string>);
+    setTargetError(null);
+    setShowTargetEditor(true);
+  }
+
+  function closeTargetEditor() {
+    setShowTargetEditor(false);
+    setTargetError(null);
+  }
+
+  function saveTargets() {
+    const enteredValues = categories
+      .map(category => ({ category, value: targetInputs[category] }))
+      .filter(({ value }) => value.trim() !== '');
+    const total = enteredValues.reduce((sum, { value }) => sum + Number(value), 0);
+
+    if (enteredValues.length > 0 && total > 100) {
+      setTargetError('Targets exceed 100%');
+      return;
+    }
+
+    if (!userId) return;
+
+    setIsSavingTargets(true);
+    setTargetError(null);
+
+    const saveCategoryTarget = async (category: StudyCategory) => {
+      const rawTarget = targetInputs[category].trim();
+      if (rawTarget === '') {
+        await supabase
+          .from('category_targets')
+          .delete()
+          .eq('user_id', userId)
+          .eq('category', category);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('category_targets')
+        .upsert({
+          user_id: userId,
+          category,
+          target_percentage: Number(rawTarget),
+        }, { onConflict: 'user_id,category' });
+
+      if (error) throw error;
+    };
+
+    const persistTargets = async () => {
+      try {
+        await Promise.all(categories.map(saveCategoryTarget));
+        const nextTargets = Object.fromEntries(
+          categories.map(category => [category, targetInputs[category].trim() === '' ? null : Number(targetInputs[category])])
+        ) as Record<StudyCategory, number | null>;
+        setTargets(nextTargets);
+        setShowTargetEditor(false);
+      } catch (error) {
+        setTargetError(error instanceof Error ? error.message : 'Unable to save targets');
+      } finally {
+        setIsSavingTargets(false);
+      }
+    };
+
+    void persistTargets();
+  }
 
   return (
     <section className="min-w-0 overflow-hidden rounded-lg bg-primary p-4">
@@ -502,15 +631,81 @@ function CategoryPie({ sessions }: StudyAnalyticsProps) {
             </ResponsiveContainer>
           </div>
           <div className="w-full min-w-0 space-y-2 text-sm sm:w-auto sm:space-y-3 sm:text-base">
-            {totals.map(item => (
-              <div key={item.name} className="flex items-center justify-between gap-3 leading-6">
-                <span className="flex min-w-0 items-center gap-2 text-gray-300">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: categoryColors[item.name as StudyCategory] }} />
-                  <span className="truncate">{item.name}</span>
-                </span>
-                <span className="shrink-0 text-gray-400">{Math.round(item.value / totalMinutes * 100)}%</span>
-              </div>
+            {totals.map(item => {
+              const percentage = totalMinutes === 0 ? 0 : Math.round(item.value / totalMinutes * 100);
+              const target = targets[item.name as StudyCategory];
+              return (
+                <div key={item.name} className="flex items-center justify-between gap-3 leading-6">
+                  <span className="flex min-w-0 items-center gap-2 text-gray-300">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: categoryColors[item.name as StudyCategory] }} />
+                    <span className="truncate">{item.name}</span>
+                  </span>
+                  <span className="shrink-0">
+                    <span className={target === null
+                      ? 'text-gray-400'
+                      : Math.abs(percentage - target) <= 5
+                        ? 'text-green-400'
+                        : 'text-red-400'}>
+                      {percentage}%
+                    </span>
+                    {target !== null && <span className="text-gray-500"> · target {target}%</span>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={openTargetEditor}
+        className="mt-4 text-sm text-gray-500 hover:text-white transition"
+      >
+        Set targets
+      </button>
+
+      {showTargetEditor && (
+        <div className="mt-4 rounded border border-gray-700 bg-gray-900/40 p-3 text-sm">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {categories.map(category => (
+              <label key={category} className="flex items-center justify-between gap-3">
+                <span className="text-gray-300">{category}</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={targetInputs[category]}
+                  onChange={event => {
+                    setTargetInputs(current => ({ ...current, [category]: event.target.value }));
+                    setTargetError(null);
+                  }}
+                  placeholder="—"
+                  className="w-24 rounded border border-gray-700 bg-primary px-2 py-1.5 text-right text-white outline-none focus:border-accent"
+                />
+              </label>
             ))}
+          </div>
+
+          {targetError && <p className="mt-3 text-sm text-red-400">{targetError}</p>}
+
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={closeTargetEditor}
+              className="rounded px-3 py-2 text-gray-400 transition hover:text-white"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={saveTargets}
+              disabled={isSavingTargets}
+              className="rounded bg-accent px-3 py-2 text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSavingTargets ? 'Saving...' : 'Save'}
+            </button>
           </div>
         </div>
       )}
@@ -518,13 +713,13 @@ function CategoryPie({ sessions }: StudyAnalyticsProps) {
   );
 }
 
-export function StudyAnalytics({ sessions }: StudyAnalyticsProps) {
+export function StudyAnalytics({ sessions, userId }: CategoryPieProps) {
   return (
     <div className="mt-8 grid gap-6">
       <Pace sessions={sessions} />
       <Heatmap sessions={sessions} />
       <WeeklyTimeChart sessions={sessions} />
-      <CategoryPie sessions={sessions} />
+      <CategoryPie sessions={sessions} userId={userId} />
     </div>
   );
 }
