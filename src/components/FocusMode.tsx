@@ -206,7 +206,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
         <button
           type="button"
           onClick={() => setShowSetup(true)}
-          className="w-full rounded-lg border border-accent bg-accent px-4 py-4 text-center font-semibold text-white transition hover:opacity-90"
+          className="w-full rounded-lg border border-accent/40 bg-primary/70 px-4 py-4 text-center font-semibold text-amber-200 transition hover:border-accent/70 hover:bg-accent/10"
         >
           Focus Mode
         </button>
