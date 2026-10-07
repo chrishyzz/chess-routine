@@ -599,7 +599,7 @@ function ProjectCard({
           )}
         </div>
 
-        <div className="flex shrink-0 flex-col gap-1">
+        <div className="flex shrink-0 flex-col">
           <button
             type="button"
             onClick={() => setShowLogForm(!showLogForm)}
@@ -607,37 +607,37 @@ function ProjectCard({
           >
             {isSuccess ? '✓' : showLogForm ? 'Cancel' : 'Log'}
           </button>
-
-          <div className="flex gap-1 text-sm">
-            <button
-              type="button"
-              onClick={() => onToggleActive(project)}
-              disabled={isUpdatingStatus}
-              className="text-gray-500 transition hover:text-amber-300 disabled:cursor-wait disabled:opacity-50"
-            >
-              {isUpdatingStatus ? 'Updating...' : project.isActive ? 'Move to backlog' : 'Promote to active'}
-            </button>
-            {!showDeleteConfirm && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-gray-500 transition hover:text-red-400"
-              >
-                Delete
-              </button>
-            )}
-            {project.type === 'progress' && progressPercent >= 100 && (
-              <button
-                type="button"
-                onClick={() => void handleArchive()}
-                disabled={isArchiving}
-                className="text-gray-500 transition hover:text-white disabled:opacity-50"
-              >
-                {isArchiving ? 'Archiving...' : 'Archive'}
-              </button>
-            )}
-          </div>
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-x-4 gap-y-2 border-t border-gray-800 pt-3 text-sm">
+        <button
+          type="button"
+          onClick={() => onToggleActive(project)}
+          disabled={isUpdatingStatus}
+          className="text-gray-500 transition hover:text-amber-300 disabled:cursor-wait disabled:opacity-50"
+        >
+          {isUpdatingStatus ? 'Updating...' : project.isActive ? 'Move to backlog' : 'Promote to active'}
+        </button>
+        {!showDeleteConfirm && (
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-gray-500 transition hover:text-red-400"
+          >
+            Delete
+          </button>
+        )}
+        {project.type === 'progress' && progressPercent >= 100 && (
+          <button
+            type="button"
+            onClick={() => void handleArchive()}
+            disabled={isArchiving}
+            className="text-gray-500 transition hover:text-white disabled:opacity-50"
+          >
+            {isArchiving ? 'Archiving...' : 'Archive'}
+          </button>
+        )}
       </div>
 
       {showLogForm && (
