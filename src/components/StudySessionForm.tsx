@@ -3,7 +3,7 @@ import { useState } from 'react';
 export type StudyCategory = 'Games & analysis' | 'Tactics' | 'Endgame' | 'Middlegame' | 'Openings';
 
 interface StudySessionFormProps {
-  onSubmit: (session: { category: StudyCategory; durationMinutes: number; puzzlesSolved: number; gamesPlayed: number; notes: string }) => void;
+  onSubmit: (session: { category: StudyCategory; durationMinutes: number; puzzlesSolved: number; gamesPlayed: number; notes: string }) => boolean | Promise<boolean>;
 }
 
 const categories: StudyCategory[] = ['Games & analysis', 'Tactics', 'Endgame', 'Middlegame', 'Openings'];
@@ -14,8 +14,9 @@ export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
   const [puzzlesSolved, setPuzzlesSolved] = useState('0');
   const [gamesPlayed, setGamesPlayed] = useState('0');
   const [notes, setNotes] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const duration = Number(durationMinutes);
     const puzzles = Number(puzzlesSolved);
@@ -25,7 +26,11 @@ export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
       return;
     }
 
-    onSubmit({ category, durationMinutes: duration, puzzlesSolved: puzzles, gamesPlayed: games, notes: notes.trim() });
+    const wasSaved = await onSubmit({ category, durationMinutes: duration, puzzlesSolved: puzzles, gamesPlayed: games, notes: notes.trim() });
+    if (!wasSaved) return;
+
+    setIsSuccess(true);
+    setTimeout(() => setIsSuccess(false), 1500);
     setCategory('Games & analysis');
     setDurationMinutes('30');
     setPuzzlesSolved('0');
@@ -107,8 +112,12 @@ export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
       </div>
 
        <div className="flex justify-center">
-        <button type="submit" className="rounded bg-accent px-6 py-2.5 font-semibold text-white transition hover:opacity-90">
-          Log Session
+        <button
+          type="submit"
+          className={`flex min-w-24 items-center justify-center rounded px-6 py-2.5 font-semibold transition ${isSuccess ? 'bg-green-500 hover:bg-green-400' : 'bg-accent hover:opacity-90'}`}
+          aria-label={isSuccess ? 'Activity logged successfully' : 'Log session'}
+        >
+          {isSuccess ? '✓' : 'Log Session'}
         </button>
       </div>
     </form>

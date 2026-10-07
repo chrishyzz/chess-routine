@@ -163,9 +163,9 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
     };
   }, [user]);
 
-  async function logSession(session: Omit<StudySession, 'id' | 'createdAt'>) {
+  async function logSession(session: Omit<StudySession, 'id' | 'createdAt'>): Promise<boolean> {
     if (!user) {
-      return;
+      return false;
     }
 
     setError(null);
@@ -186,7 +186,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
 
     if (insertError) {
       setError(insertError.message);
-      return;
+      return false;
     }
 
     const newSession = {
@@ -201,6 +201,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
 
     setSessions(currentSessions => [newSession, ...currentSessions]);
     setAnalyticsSessions(currentSessions => [{ ...newSession, notes: '' }, ...currentSessions]);
+    return true;
   }
 
   async function deleteSession(sessionId: string) {

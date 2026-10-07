@@ -402,6 +402,7 @@ function ProjectCard({
   dragHandleProps?: any;
 }) {
   const [showLogForm, setShowLogForm] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const progressPercent = project.type === 'progress' && project.goal ? Math.min(100, (project.currentProgress || 0) / project.goal * 100) : 0;
@@ -534,9 +535,9 @@ function ProjectCard({
           <button
             type="button"
             onClick={() => setShowLogForm(!showLogForm)}
-            className="whitespace-nowrap rounded border border-gray-600 px-3 py-1.5 text-sm text-white bg-transparent transition hover:bg-gray-700"
+            className={`whitespace-nowrap rounded border px-3 py-1.5 text-sm transition ${isSuccess ? 'border-green-500 bg-green-500 text-white' : 'border-gray-600 bg-transparent text-white hover:bg-gray-700'}`}
           >
-            {showLogForm ? 'Cancel' : 'Log'}
+            {isSuccess ? '✓' : showLogForm ? 'Cancel' : 'Log'}
           </button>
 
           <div className="flex gap-1 text-sm">
@@ -569,6 +570,8 @@ function ProjectCard({
             project={project}
             userId={userId}
             onSuccess={() => {
+              setIsSuccess(true);
+              setTimeout(() => setIsSuccess(false), 1500);
               setShowLogForm(false);
               onUpdate();
             }}
