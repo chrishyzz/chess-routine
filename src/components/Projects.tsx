@@ -271,9 +271,20 @@ function LogSessionForm({
     }
 
     if (project.type === 'progress') {
+      if (
+        !project.unitName?.trim()
+        || !Number.isFinite(project.goal)
+        || (project.goal ?? 0) <= 0
+        || !Number.isFinite(project.currentProgress)
+        || (project.currentProgress ?? -1) < 0
+      ) {
+        setError('This project is configured for progress tracking but is missing a unit, valid goal, or valid current progress. Update the project configuration before logging a session.');
+        return;
+      }
+
       const prog = Number(progress);
-      if (!Number.isFinite(prog) || prog <= 0) {
-        setError('Progress must be a positive number');
+      if (!Number.isFinite(prog) || !Number.isInteger(prog) || prog <= 0) {
+        setError('Progress must be a positive whole number');
         return;
       }
     }
@@ -295,30 +306,35 @@ function LogSessionForm({
       });
 
       if (insertError) {
-        setError(insertError.message);
-        setIsSubmitting(false);
+        setError(`Unable to log this study session: ${insertError.message}`);
         return;
       }
 
       // Update project progress if needed
       if (project.type === 'progress') {
         const newProgress = (project.currentProgress || 0) + Number(progress);
-        const { error: updateError } = await supabase
+        const { data: updatedProject, error: updateError } = await supabase
           .from('projects')
           .update({ current_progress: newProgress })
-          .eq('id', project.id);
+          .eq('id', project.id)
+          .select('id')
+          .maybeSingle();
 
         if (updateError) {
-          setError(updateError.message);
-          setIsSubmitting(false);
+          setError(`The study session was saved, but project progress could not be updated: ${updateError.message}`);
+          return;
+        }
+        if (!updatedProject) {
+          setError('The study session was saved, but project progress was not updated. The project may be missing or you may not have permission to update it.');
           return;
         }
       }
 
-      setIsSubmitting(false);
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const detail = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(`Unable to complete project session logging: ${detail}`);
+    } finally {
       setIsSubmitting(false);
     }
   }
@@ -390,7 +406,7 @@ function LogSessionForm({
         />
       </div>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="rounded border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">{error}</p>}
 
       <div className="flex gap-2">
         <button
