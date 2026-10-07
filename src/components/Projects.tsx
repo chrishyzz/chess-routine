@@ -46,7 +46,7 @@ interface ProjectsProps {
   error: string | null;
   onError: (error: string | null) => void;
   onSessionLogged: () => void;
-  priorityCategory: StudyCategory | null;
+  focusCategory: StudyCategory | null;
 }
 
 const categories: StudyCategory[] = ['Games & analysis', 'Tactics', 'Endgame', 'Middlegame', 'Openings'];
@@ -437,7 +437,7 @@ function ProjectCard({
   isDragging,
   dragAttributes,
   dragListeners,
-  priorityCategory,
+  focusCategory,
   onToggleActive,
   isUpdatingStatus,
 }: {
@@ -448,7 +448,7 @@ function ProjectCard({
   isDragging?: boolean;
   dragAttributes?: DraggableAttributes;
   dragListeners?: DraggableSyntheticListeners;
-  priorityCategory: StudyCategory | null;
+  focusCategory: StudyCategory | null;
   onToggleActive: (project: Project) => void;
   isUpdatingStatus: boolean;
 }) {
@@ -507,7 +507,7 @@ function ProjectCard({
   return (
     <div 
       className={`rounded-lg border bg-primary p-4 transition-all ${isDragging ? 'opacity-50' : ''} ${
-        project.category === priorityCategory
+        project.category === focusCategory
           ? 'border-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.12)]'
           : 'border-gray-800'
       }`}
@@ -537,9 +537,9 @@ function ProjectCard({
             <span className="text-xs uppercase tracking-wider text-gray-400">
               {project.category}
             </span>
-            {project.category === priorityCategory && (
+            {project.category === focusCategory && (
               <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
-                Priority Sprint
+                Focus Mode
               </span>
             )}
           </div>
@@ -687,7 +687,7 @@ function SortableProjectCard(props: React.ComponentProps<typeof ProjectCard> & {
   );
 }
 
-export function Projects({ userId, error, onError, onSessionLogged, priorityCategory }: ProjectsProps) {
+export function Projects({ userId, error, onError, onSessionLogged, focusCategory }: ProjectsProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -874,7 +874,7 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
                   id={project.id}
                   project={project}
                   userId={userId}
-                  priorityCategory={priorityCategory}
+                  focusCategory={focusCategory}
                   onToggleActive={toggleProjectStatus}
                   isUpdatingStatus={updatingProjectId === project.id}
                   onUpdate={() => {
@@ -909,7 +909,7 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
                   key={project.id}
                   project={project}
                   userId={userId}
-                  priorityCategory={priorityCategory}
+                  focusCategory={focusCategory}
                   onToggleActive={toggleProjectStatus}
                   isUpdatingStatus={updatingProjectId === project.id}
                   onUpdate={() => {

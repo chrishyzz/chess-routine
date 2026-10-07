@@ -67,7 +67,7 @@ create table category_targets (
 );
 alter table category_targets disable row level security;
 
--- Persist each user's active Focus Mode / Priority Sprint.
+-- Persist each user's active Focus Mode configuration.
 create table if not exists focus_sprints (
   user_id text primary key,
   category text not null,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { StudyCategory } from './StudySessionForm';
 
-export interface FocusSprint {
+export interface FocusModeConfig {
   category: StudyCategory;
   durationType: 'time' | 'volume';
   durationValue: number;
@@ -13,14 +13,14 @@ export interface FocusSprint {
 interface FocusModeProps {
   userId: string;
   sessions: { category: StudyCategory; durationMinutes: number; sessionDate: string }[];
-  onFocusChange: (sprint: FocusSprint | null) => void;
+  onFocusChange: (focusMode: FocusModeConfig | null) => void;
   onError: (error: string | null) => void;
 }
 
 const categories: StudyCategory[] = ['Games & analysis', 'Tactics', 'Endgame', 'Middlegame', 'Openings'];
 
 export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusModeProps) {
-  const [sprint, setSprint] = useState<FocusSprint | null>(null);
+  const [focusMode, setFocusMode] = useState<FocusModeConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
@@ -31,7 +31,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
   const [now, setNow] = useState(Date.now());
   const expiryHandled = useRef(false);
 
-  const clearSprint = useCallback(async () => {
+  const clearFocusMode = useCallback(async () => {
     setIsSaving(true);
     const { error } = await supabase
       .from('focus_sprints')
@@ -42,7 +42,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
       onError(error.message);
       return;
     }
-    setSprint(null);
+    setFocusMode(null);
     onFocusChange(null);
     expiryHandled.current = false;
     onError(null);
@@ -50,7 +50,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
 
   useEffect(() => {
     let active = true;
-    async function fetchSprint() {
+    async function fetchFocusMode() {
       const { data, error } = await supabase
         .from('focus_sprints')
         .select('category, duration_type, duration_value, target_ratio, started_at')
@@ -61,63 +61,63 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
       if (error) {
         onError(error.message);
       } else if (data) {
-        const loadedSprint: FocusSprint = {
+        const loadedFocusMode: FocusModeConfig = {
           category: data.category as StudyCategory,
           durationType: data.duration_type,
           durationValue: Number(data.duration_value),
           targetRatio: data.target_ratio,
           startedAt: data.started_at,
         };
-        setSprint(loadedSprint);
-        onFocusChange(loadedSprint);
+        setFocusMode(loadedFocusMode);
+        onFocusChange(loadedFocusMode);
       }
       setIsLoading(false);
     }
 
-    void fetchSprint();
+    void fetchFocusMode();
     return () => {
       active = false;
     };
   }, [userId, onError, onFocusChange]);
 
   useEffect(() => {
-    if (!sprint) return;
+    if (!focusMode) return;
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
-  }, [sprint]);
+  }, [focusMode]);
 
-  const endTime = sprint?.durationType === 'time'
-    ? new Date(sprint.startedAt).getTime() + sprint.durationValue * 24 * 60 * 60 * 1000
+  const endTime = focusMode?.durationType === 'time'
+    ? new Date(focusMode.startedAt).getTime() + focusMode.durationValue * 24 * 60 * 60 * 1000
     : null;
 
   useEffect(() => {
-    if (!sprint || endTime === null || now < endTime || expiryHandled.current) return;
+    if (!focusMode || endTime === null || now < endTime || expiryHandled.current) return;
     expiryHandled.current = true;
-    void clearSprint();
-  }, [sprint, endTime, now, clearSprint]);
+    void clearFocusMode();
+  }, [focusMode, endTime, now, clearFocusMode]);
 
-  const sprintSessions = sprint
-    ? sessions.filter(session => session.sessionDate >= sprint.startedAt.slice(0, 10))
+  const focusModeSessions = focusMode
+    ? sessions.filter(session => session.sessionDate >= focusMode.startedAt.slice(0, 10))
     : [];
-  const priorityMinutes = sprint
-    ? sprintSessions
-      .filter(session => session.category === sprint.category)
+  const focusCategoryMinutes = focusMode
+    ? focusModeSessions
+      .filter(session => session.category === focusMode.category)
       .reduce((total, session) => total + session.durationMinutes, 0)
     : 0;
-  const totalMinutes = sprintSessions.reduce((total, session) => total + session.durationMinutes, 0);
-  const volumeTargetMinutes = sprint?.durationType === 'volume' ? sprint.durationValue * 60 : 0;
+  const totalMinutes = focusModeSessions.reduce((total, session) => total + session.durationMinutes, 0);
+  const volumeTargetMinutes = focusMode?.durationType === 'volume' ? focusMode.durationValue * 60 : 0;
   const daysRemaining = endTime === null ? 0 : Math.max(0, Math.ceil((endTime - now) / (24 * 60 * 60 * 1000)));
-  const timeProgress = sprint?.durationType === 'time' && endTime !== null
-    ? Math.min(100, Math.max(0, (now - new Date(sprint.startedAt).getTime()) / (endTime - new Date(sprint.startedAt).getTime()) * 100))
+  const timeProgress = focusMode?.durationType === 'time' && endTime !== null
+    ? Math.min(100, Math.max(0, (now - new Date(focusMode.startedAt).getTime()) / (endTime - new Date(focusMode.startedAt).getTime()) * 100))
     : 0;
   const volumeProgress = volumeTargetMinutes > 0 ? Math.min(100, totalMinutes / volumeTargetMinutes * 100) : 0;
 
-  async function activateSprint(event: React.FormEvent<HTMLFormElement>) {
+  async function activateFocusMode(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = Number(durationValue);
     const ratio = Number(targetRatio);
     if (!Number.isFinite(value) || value <= 0 || !Number.isInteger(ratio) || ratio < 1 || ratio > 99) {
-      onError('Enter a valid duration and a priority ratio between 1% and 99%.');
+      onError('Enter a valid duration and a focus category ratio between 1% and 99%.');
       return;
     }
 
@@ -143,7 +143,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
       return;
     }
 
-    const nextSprint: FocusSprint = {
+    const nextFocusMode: FocusModeConfig = {
       category: data.category as StudyCategory,
       durationType: data.duration_type,
       durationValue: Number(data.duration_value),
@@ -151,46 +151,46 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
       startedAt: data.started_at,
     };
     expiryHandled.current = false;
-    setSprint(nextSprint);
-    onFocusChange(nextSprint);
+    setFocusMode(nextFocusMode);
+    onFocusChange(nextFocusMode);
     setShowSetup(false);
   }
 
   if (isLoading) {
-    return <p className="mb-6 rounded-lg bg-primary px-5 py-4 text-sm text-gray-400">Loading focus sprint...</p>;
+    return <p className="mb-6 rounded-lg bg-primary px-5 py-4 text-sm text-gray-400">Loading Focus Mode...</p>;
   }
 
-  if (sprint) {
-    const progress = sprint.durationType === 'time' ? timeProgress : volumeProgress;
+  if (focusMode) {
+    const progress = focusMode.durationType === 'time' ? timeProgress : volumeProgress;
     return (
       <section className="mb-6 rounded-lg border border-amber-400/60 bg-gradient-to-r from-amber-500/15 to-primary p-4 shadow-[0_0_24px_rgba(251,191,36,0.12)] sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">Focus Mode · Priority Sprint</p>
-            <h2 className="mt-1 text-xl font-semibold">{sprint.category}</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">Focus Mode</p>
+            <h2 className="mt-1 text-xl font-semibold">{focusMode.category}</h2>
             <p className="mt-1 text-sm text-gray-300">
-              Targeting {sprint.targetRatio}% of study time · {100 - sprint.targetRatio}% for everything else
+              Targeting {focusMode.targetRatio}% of study time · {100 - focusMode.targetRatio}% for everything else
             </p>
           </div>
           <button
             type="button"
-            onClick={() => void clearSprint()}
+            onClick={() => void clearFocusMode()}
             disabled={isSaving}
             className="rounded border border-gray-600 px-3 py-2 text-sm text-gray-300 transition hover:border-red-400 hover:text-red-300 disabled:opacity-50"
           >
-            {isSaving ? 'Ending...' : 'End sprint'}
+            {isSaving ? 'Ending...' : 'End Focus Mode'}
           </button>
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
           <span className="font-medium text-white">
-            {sprint.durationType === 'time'
+            {focusMode.durationType === 'time'
               ? `${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} remaining`
-              : `${(totalMinutes / 60).toFixed(1)} / ${sprint.durationValue} hours logged`}
+              : `${(totalMinutes / 60).toFixed(1)} / ${focusMode.durationValue} hours logged`}
           </span>
           <span className="text-gray-400">
-            {sprint.durationType === 'time'
-              ? `${Math.round(timeProgress)}% of sprint elapsed`
-              : `${Math.round(volumeProgress)}% complete · ${Math.round(priorityMinutes)} priority minutes`}
+            {focusMode.durationType === 'time'
+              ? `${Math.round(timeProgress)}% of Focus Mode elapsed`
+              : `${Math.round(volumeProgress)}% complete · ${Math.round(focusCategoryMinutes)} min in focus category`}
           </span>
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-800">
@@ -206,23 +206,23 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
         <button
           type="button"
           onClick={() => setShowSetup(true)}
-          className="w-full rounded-lg border border-dashed border-amber-400/40 bg-primary/70 px-4 py-4 text-left transition hover:border-amber-300"
+          className="w-full rounded-lg border border-accent/40 bg-accent/10 px-4 py-4 text-center transition hover:border-accent/70 hover:bg-accent/15"
         >
           <span className="block font-semibold text-amber-200">Start Focus Mode</span>
-          <span className="mt-1 block text-sm text-gray-400">Choose a priority category and set a focused training goal.</span>
+          <span className="mt-1 block text-sm text-gray-400">Choose a focus category and set a focused training goal.</span>
         </button>
       ) : (
-        <form onSubmit={activateSprint} className="space-y-4 rounded-lg border border-amber-400/40 bg-primary p-4 sm:p-5">
+        <form onSubmit={activateFocusMode} className="space-y-4 rounded-lg border border-amber-400/40 bg-primary p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">Set up a Priority Sprint</h2>
+              <h2 className="text-lg font-semibold">Set up Focus Mode</h2>
               <p className="mt-1 text-sm text-gray-400">Create a focused target for your next training block.</p>
             </div>
             <button type="button" onClick={() => setShowSetup(false)} className="text-sm text-gray-400 hover:text-white">Cancel</button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm text-gray-300">
-              Priority category
+              Focus category
               <select
                 value={category}
                 onChange={event => setCategory(event.target.value as StudyCategory)}
@@ -248,7 +248,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
             </label>
             {durationType === 'time' ? (
               <label className="text-sm text-gray-300">
-                Sprint duration
+                Focus Mode duration
                 <select
                   value={durationValue}
                   onChange={event => setDurationValue(event.target.value)}
@@ -274,7 +274,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
               </label>
             )}
             <label className="text-sm text-gray-300">
-              Priority category target (%)
+              Focus category target (%)
               <input
                 type="number"
                 min="1"

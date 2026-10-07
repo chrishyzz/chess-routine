@@ -5,7 +5,7 @@ import { StudyAnalytics } from '../components/StudyAnalytics';
 import { Projects } from '../components/Projects';
 import { Goals } from '../components/Goals';
 import { supabase } from '../lib/supabase';
-import { FocusMode, FocusSprint } from '../components/FocusMode';
+import { FocusMode, FocusModeConfig } from '../components/FocusMode';
 
 interface StudySession {
   id: string;
@@ -91,7 +91,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
   const { user, logout } = useAuth();
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [analyticsSessions, setAnalyticsSessions] = useState<AnalyticsSession[]>([]);
-  const [focusSprint, setFocusSprint] = useState<FocusSprint | null>(null);
+  const [focusMode, setFocusMode] = useState<FocusModeConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -268,7 +268,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
             <FocusMode
               userId={user.id}
               sessions={analyticsSessions}
-              onFocusChange={setFocusSprint}
+              onFocusChange={setFocusMode}
               onError={setError}
             />
           </div>
@@ -281,7 +281,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
               error={error}
               onError={setError}
               onSessionLogged={() => void fetchSessions()}
-              priorityCategory={focusSprint?.category ?? null}
+              focusCategory={focusMode?.category ?? null}
             />
           </div>
         )}
@@ -294,7 +294,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
           <StudyAnalytics
             sessions={analyticsSessions}
             userId={user?.id ?? ''}
-            focusSprint={focusSprint}
+            focusMode={focusMode}
           />
         )}
 
