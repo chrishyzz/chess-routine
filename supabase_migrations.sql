@@ -69,3 +69,88 @@ create table if not exists focus_sprints (
   started_at timestamptz not null default now()
 );
 alter table focus_sprints disable row level security;
+
+-- Link each study session to at most one project and preserve its activity date.
+alter table public.study_sessions
+  add column if not exists project_id uuid,
+  add column if not exists session_date date;
+
+update public.study_sessions
+set session_date = coalesce(created_at::date, current_date)
+where session_date is null;
+
+alter table public.study_sessions
+  alter column session_date set default current_date,
+  alter column session_date set not null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'study_sessions_project_id_fkey'
+      and conrelid = 'public.study_sessions'::regclass
+  ) then
+    alter table public.study_sessions
+      add constraint study_sessions_project_id_fkey
+      foreign key (project_id)
+      references public.projects(id)
+      on delete set null;
+  end if;
+end $$;
+
+create index if not exists idx_study_sessions_user_project
+  on public.study_sessions(user_id, project_id);
+create index if not exists idx_study_sessions_user_date
+  on public.study_sessions(user_id, session_date);
+
+create or replace function public.sync_study_session_project_category()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.project_id is not null then
+    select project.category
+    into new.category
+    from public.projects as project
+    where project.id = new.project_id
+      and project.user_id::text = new.user_id::text;
+
+    if not found then
+      raise exception 'Project % does not belong to user %', new.project_id, new.user_id;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists study_sessions_sync_project_category on public.study_sessions;
+create trigger study_sessions_sync_project_category
+before insert or update of project_id, user_id
+on public.study_sessions
+for each row
+execute function public.sync_study_session_project_category();
+
+create or replace function public.sync_project_category_to_study_sessions()
+returns trigger
+language plpgsql
+as $$
+begin
+  update public.study_sessions
+  set category = new.category
+  where project_id = new.id;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists projects_sync_category_to_study_sessions on public.projects;
+create trigger projects_sync_category_to_study_sessions
+after update of category
+on public.projects
+for each row
+when (old.category is distinct from new.category)
+execute function public.sync_project_category_to_study_sessions();
+
+notify pgrst, 'reload schema';

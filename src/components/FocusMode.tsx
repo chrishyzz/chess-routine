@@ -12,7 +12,7 @@ export interface FocusSprint {
 
 interface FocusModeProps {
   userId: string;
-  sessions: { category: StudyCategory; durationMinutes: number; createdAt: string }[];
+  sessions: { category: StudyCategory; durationMinutes: number; sessionDate: string }[];
   onFocusChange: (sprint: FocusSprint | null) => void;
   onError: (error: string | null) => void;
 }
@@ -97,7 +97,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
   }, [sprint, endTime, now, clearSprint]);
 
   const sprintSessions = sprint
-    ? sessions.filter(session => new Date(session.createdAt).getTime() >= new Date(sprint.startedAt).getTime())
+    ? sessions.filter(session => session.sessionDate >= sprint.startedAt.slice(0, 10))
     : [];
   const priorityMinutes = sprint
     ? sprintSessions

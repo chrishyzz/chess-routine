@@ -22,7 +22,7 @@ An app for self-directed chess training.
 
 Study sessions are stored in a Supabase database, tied to your Lichess account. Your data is available across devices and persists between sessions.
 
-Focus Mode configurations are stored in the `focus_sprints` Supabase table and remain active across devices until the time-based sprint ends or you end it manually. Apply the Focus Mode migration in `supabase_migrations.sql` in the Supabase SQL editor before using this feature.
+Focus Mode configurations are stored in the `focus_sprints` Supabase table and remain active across devices until the time-based sprint ends or you end it manually. Study sessions logged from a project are linked through `study_sessions.project_id`; their `session_date` drives date-based reports, and the database keeps their category aligned with the linked project. Apply the migrations in `supabase_migrations.sql` in the Supabase SQL editor before using these features.
 
 ## Lichess OAuth Setup
 

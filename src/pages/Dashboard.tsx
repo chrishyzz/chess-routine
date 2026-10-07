@@ -15,6 +15,7 @@ interface StudySession {
   gamesPlayed: number;
   notes: string;
   createdAt: string;
+  sessionDate: string;
 }
 
 interface AnalyticsSession {
@@ -25,10 +26,11 @@ interface AnalyticsSession {
   gamesPlayed: number;
   notes: string;
   createdAt: string;
+  sessionDate: string;
 }
 
-function getDateLabel(dateStr: string): string {
-  const date = new Date(dateStr);
+function getDateLabel(sessionDate: string): string {
+  const date = new Date(`${sessionDate}T12:00:00`);
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
@@ -44,11 +46,6 @@ function getDateLabel(dateStr: string): string {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function getLocalDateKey(dateStr: string): string {
-  const date = new Date(dateStr);
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-}
-
 interface SessionGroup {
   label: string;
   key: string;
@@ -62,12 +59,12 @@ function groupSessionsByDate(sessions: StudySession[]): SessionGroup[] {
   const groups: SessionGroup[] = [];
 
   for (const session of sessions) {
-    const key = getLocalDateKey(session.createdAt);
+    const key = session.sessionDate;
     let existing = groups.find(g => g.key === key);
 
     if (!existing) {
       existing = {
-        label: getDateLabel(session.createdAt),
+        label: getDateLabel(session.sessionDate),
         key,
         sessions: [],
         totalMinutes: 0,
@@ -112,19 +109,26 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
     const [displayResult, analyticsResult] = await Promise.all([
       supabase
         .from('study_sessions')
-        .select('id, category, duration_minutes, puzzles_solved, games_played, notes, created_at')
+        .select('id, category, duration_minutes, puzzles_solved, games_played, notes, created_at, session_date')
         .eq('user_id', user.id)
+        .order('session_date', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(30),
       supabase
         .from('study_sessions')
-        .select('id, category, duration_minutes, puzzles_solved, games_played, created_at')
+        .select('id, category, duration_minutes, puzzles_solved, games_played, created_at, session_date')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
     ]);
 
     if (displayResult.error) {
       setError(displayResult.error.message);
+      setIsLoading(false);
+      return;
+    }
+
+    if (analyticsResult.error) {
+      setError(analyticsResult.error.message);
       setIsLoading(false);
       return;
     }
@@ -137,6 +141,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
       gamesPlayed: session.games_played || 0,
       notes: session.notes,
       createdAt: session.created_at,
+      sessionDate: session.session_date,
     })));
 
     setAnalyticsSessions((analyticsResult.data || []).map(session => ({
@@ -147,6 +152,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
       gamesPlayed: session.games_played || 0,
       notes: '',
       createdAt: session.created_at,
+      sessionDate: session.session_date,
     })));
 
     setIsLoading(false);
@@ -173,8 +179,9 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
         games_played: session.gamesPlayed,
         notes: session.notes,
         created_at: createdAt,
+        session_date: session.sessionDate,
       })
-      .select('id, category, duration_minutes, puzzles_solved, games_played, notes, created_at')
+      .select('id, category, duration_minutes, puzzles_solved, games_played, notes, created_at, session_date')
       .single();
 
     if (insertError) {
@@ -190,6 +197,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
       gamesPlayed: data.games_played || 0,
       notes: data.notes,
       createdAt: data.created_at,
+      sessionDate: data.session_date,
     };
 
     setSessions(currentSessions => [newSession, ...currentSessions]);

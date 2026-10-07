@@ -18,6 +18,7 @@ export interface AnalyticsSession {
   category: StudyCategory;
   durationMinutes: number;
   createdAt: string;
+  sessionDate: string;
   puzzlesSolved?: number;
   gamesPlayed?: number;
 }
@@ -69,6 +70,10 @@ function dateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function activityDate(session: AnalyticsSession): Date {
+  return new Date(`${session.sessionDate}T12:00:00`);
+}
+
 function startOfDay(date: Date) {
   const result = new Date(date);
   result.setHours(0, 0, 0, 0);
@@ -105,8 +110,8 @@ function Pace({ sessions }: StudyAnalyticsProps) {
 
   // Filter sessions in the range
   const filteredSessions = sessions.filter(session => {
-    const sessionDate = startOfDay(new Date(session.createdAt));
-    return sessionDate >= cutoffDate && sessionDate <= today;
+    const date = startOfDay(activityDate(session));
+    return date >= cutoffDate && date <= today;
   });
 
   // Calculate totals
@@ -118,7 +123,7 @@ function Pace({ sessions }: StudyAnalyticsProps) {
   const daysWithData = new Set(
     filteredSessions
       .filter(s => s.durationMinutes > 0 || (s.puzzlesSolved || 0) > 0 || (s.gamesPlayed || 0) > 0)
-      .map(s => dateKey(new Date(s.createdAt)))
+      .map(s => dateKey(activityDate(s)))
   ).size;
 
   // Hide section entirely if no data at all
@@ -221,13 +226,13 @@ function Heatmap({ sessions }: StudyAnalyticsProps) {
   }));
 
   const sessionsByDay = sessions.reduce<Record<string, typeof sessions>>((totals, session) => {
-    const key = dateKey(new Date(session.createdAt));
+    const key = dateKey(activityDate(session));
     totals[key] = (totals[key] || []).concat(session);
     return totals;
   }, {});
 
   const minutesByDay = sessions.reduce<Record<string, number>>((totals, session) => {
-    const key = dateKey(new Date(session.createdAt));
+    const key = dateKey(activityDate(session));
     totals[key] = (totals[key] || 0) + session.durationMinutes;
     return totals;
   }, {});
@@ -393,8 +398,8 @@ function WeeklyTimeChart({ sessions }: StudyAnalyticsProps) {
     weekEnd.setDate(weekStart.getDate() + 7);
 
     const totalMinutes = sessions.reduce((sum, session) => {
-      const sessionDate = new Date(session.createdAt);
-      if (sessionDate >= weekStart && sessionDate < weekEnd) {
+      const date = activityDate(session);
+      if (date >= weekStart && date < weekEnd) {
         return sum + session.durationMinutes;
       }
       return sum;
@@ -410,8 +415,8 @@ function WeeklyTimeChart({ sessions }: StudyAnalyticsProps) {
 
   // Get this week's total
   const thisWeekTotal = sessions.reduce((sum, session) => {
-    const sessionDate = new Date(session.createdAt);
-    if (sessionDate >= currentWeekStart && sessionDate < new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+    const date = activityDate(session);
+    if (date >= currentWeekStart && date < new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000)) {
       return sum + session.durationMinutes;
     }
     return sum;
@@ -478,12 +483,12 @@ function CategoryPie({ sessions, userId, focusSprint }: CategoryPieProps) {
   });
   const [targetError, setTargetError] = useState<string | null>(null);
   const [isSavingTargets, setIsSavingTargets] = useState(false);
-  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const filteredSessions = range === 'all'
     ? sessions
-    : sessions.filter(session => new Date(session.createdAt).getTime() >= cutoff);
+    : sessions.filter(session => activityDate(session) >= cutoff);
   const displayedSessions = focusSprint
-    ? sessions.filter(session => new Date(session.createdAt).getTime() >= new Date(focusSprint.startedAt).getTime())
+    ? sessions.filter(session => session.sessionDate >= focusSprint.startedAt.slice(0, 10))
     : filteredSessions;
   const totals = categories.map(category => ({
     name: category,

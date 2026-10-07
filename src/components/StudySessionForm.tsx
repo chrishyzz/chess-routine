@@ -3,10 +3,18 @@ import { useState } from 'react';
 export type StudyCategory = 'Games & analysis' | 'Tactics' | 'Endgame' | 'Middlegame' | 'Openings';
 
 interface StudySessionFormProps {
-  onSubmit: (session: { category: StudyCategory; durationMinutes: number; puzzlesSolved: number; gamesPlayed: number; notes: string }) => boolean | Promise<boolean>;
+  onSubmit: (session: { category: StudyCategory; durationMinutes: number; puzzlesSolved: number; gamesPlayed: number; notes: string; sessionDate: string }) => boolean | Promise<boolean>;
 }
 
 const categories: StudyCategory[] = ['Games & analysis', 'Tactics', 'Endgame', 'Middlegame', 'Openings'];
+
+function getTodayDate(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
   const [category, setCategory] = useState<StudyCategory>('Games & analysis');
@@ -14,6 +22,7 @@ export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
   const [puzzlesSolved, setPuzzlesSolved] = useState('0');
   const [gamesPlayed, setGamesPlayed] = useState('0');
   const [notes, setNotes] = useState('');
+  const [sessionDate, setSessionDate] = useState(getTodayDate);
   const [isSuccess, setIsSuccess] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -26,7 +35,14 @@ export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
       return;
     }
 
-    const wasSaved = await onSubmit({ category, durationMinutes: duration, puzzlesSolved: puzzles, gamesPlayed: games, notes: notes.trim() });
+    const wasSaved = await onSubmit({
+      category,
+      durationMinutes: duration,
+      puzzlesSolved: puzzles,
+      gamesPlayed: games,
+      notes: notes.trim(),
+      sessionDate,
+    });
     if (!wasSaved) return;
 
     setIsSuccess(true);
@@ -36,6 +52,7 @@ export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
     setPuzzlesSolved('0');
     setGamesPlayed('0');
     setNotes('');
+    setSessionDate(getTodayDate());
   }
 
   return (
@@ -50,6 +67,19 @@ export function StudySessionForm({ onSubmit }: StudySessionFormProps) {
         >
           {categories.map(option => <option key={option}>{option}</option>)}
         </select>
+      </div>
+
+      <div>
+        <label htmlFor="session-date" className="mb-2 block text-sm font-medium text-gray-300">Session date</label>
+        <input
+          id="session-date"
+          type="date"
+          required
+          value={sessionDate}
+          max={getTodayDate()}
+          onChange={event => setSessionDate(event.target.value)}
+          className="w-full rounded border border-gray-700 bg-secondary px-3 py-2 text-white focus:border-accent focus:outline-none"
+        />
       </div>
 
       <div>

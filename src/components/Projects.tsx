@@ -50,6 +50,11 @@ interface ProjectsProps {
 
 const categories: StudyCategory[] = ['Games & analysis', 'Tactics', 'Endgame', 'Middlegame', 'Openings'];
 
+function getLocalDateInputValue(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+}
+
 function NewProjectForm({ userId, onSuccess, onCancel }: { userId: string; onSuccess: () => void; onCancel: () => void }) {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<StudyCategory>('Games & analysis');
@@ -251,6 +256,7 @@ function LogSessionForm({
   const [timeMinutes, setTimeMinutes] = useState('30');
   const [progress, setProgress] = useState('');
   const [notes, setNotes] = useState('');
+  const [sessionDate, setSessionDate] = useState(getLocalDateInputValue);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -280,10 +286,12 @@ function LogSessionForm({
       const formattedNotes = notes.trim() ? `[Project: ${project.title}] ${notes.trim()}` : `[Project: ${project.title}]`;
       const { error: insertError } = await supabase.from('study_sessions').insert({
         user_id: userId,
+        project_id: project.id,
         category: project.category,
         duration_minutes: time,
         notes: formattedNotes,
         created_at: createdAt,
+        session_date: sessionDate,
       });
 
       if (insertError) {
@@ -331,6 +339,21 @@ function LogSessionForm({
           required
           value={timeMinutes}
           onChange={e => setTimeMinutes(e.target.value)}
+          className="w-full rounded border border-gray-700 bg-primary px-2 py-1 text-sm text-white focus:border-accent focus:outline-none"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="log-session-date" className="mb-1 block text-xs font-medium text-gray-300">
+          Session date
+        </label>
+        <input
+          id="log-session-date"
+          type="date"
+          required
+          max={getLocalDateInputValue()}
+          value={sessionDate}
+          onChange={e => setSessionDate(e.target.value)}
           className="w-full rounded border border-gray-700 bg-primary px-2 py-1 text-sm text-white focus:border-accent focus:outline-none"
         />
       </div>
@@ -674,19 +697,24 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
       return;
     }
 
-    // Fetch all sessions for the user to calculate time per project
+    // Fetch linked sessions to calculate each project's own logged time.
     const { data: sessions, error: sessionsError } = await supabase
       .from('study_sessions')
-      .select('category, duration_minutes')
+      .select('project_id, duration_minutes')
       .eq('user_id', userId);
 
-    // Create a map of category -> total minutes
-    const timeByCategory: Record<string, number> = {};
-    if (!sessionsError && sessions) {
-      sessions.forEach(session => {
-        timeByCategory[session.category] = (timeByCategory[session.category] || 0) + session.duration_minutes;
-      });
+    if (sessionsError) {
+      onError(sessionsError.message);
+      setIsLoading(false);
+      return;
     }
+
+    const timeByProject: Record<string, number> = {};
+    sessions?.forEach(session => {
+      if (session.project_id) {
+        timeByProject[session.project_id] = (timeByProject[session.project_id] || 0) + session.duration_minutes;
+      }
+    });
 
     // Build projects with time data
     const projectsWithTime = (data || []).map(project => ({
@@ -698,7 +726,7 @@ export function Projects({ userId, error, onError, onSessionLogged, priorityCate
       unitName: project.unit_name,
       goal: project.goal,
       currentProgress: project.current_progress,
-      totalTimeMinutes: timeByCategory[project.category] || 0,
+      totalTimeMinutes: timeByProject[project.id] || 0,
       createdAt: project.created_at,
       archivedAt: project.archived_at,
       sortOrder: project.sort_order,

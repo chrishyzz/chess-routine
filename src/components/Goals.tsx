@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 export type GoalMetricType = 'time' | 'puzzles' | 'games';
@@ -20,6 +20,7 @@ interface StudySession {
   puzzlesSolved: number;
   gamesPlayed: number;
   createdAt: string;
+  sessionDate: string;
 }
 
 interface GoalsProps {
@@ -416,11 +417,7 @@ export function Goals({
   const [isLoading, setIsLoading] = useState(true);
   const [showNewForm, setShowNewForm] = useState(false);
 
-  useEffect(() => {
-    void fetchGoals();
-  }, [userId]);
-
-  async function fetchGoals() {
+  const fetchGoals = useCallback(async () => {
     setIsLoading(true);
     onError(null);
 
@@ -450,7 +447,11 @@ export function Goals({
 
     setGoals(goalsData);
     setIsLoading(false);
-  }
+  }, [userId, onError]);
+
+  useEffect(() => {
+    void fetchGoals();
+  }, [fetchGoals]);
 
   function calculateWeeklyProgress(goal: Goal): number[] {
     const today = startOfDay(new Date());
@@ -471,8 +472,8 @@ export function Goals({
 
         // Filter sessions for this day
         const daySessions = sessions.filter(session => {
-          const sessionDate = new Date(session.createdAt);
-          return sessionDate >= dayStart && sessionDate < dayEnd;
+          const activityDate = new Date(`${session.sessionDate}T12:00:00`);
+          return activityDate >= dayStart && activityDate < dayEnd;
         });
 
         let dayTotal = 0;
@@ -499,8 +500,8 @@ export function Goals({
 
       // Filter sessions for the entire week
       const weekSessions = sessions.filter(session => {
-        const sessionDate = new Date(session.createdAt);
-        return sessionDate >= mondayOfWeek && sessionDate < sundayOfWeek;
+        const activityDate = new Date(`${session.sessionDate}T12:00:00`);
+        return activityDate >= mondayOfWeek && activityDate < sundayOfWeek;
       });
 
       let weekTotal = 0;
