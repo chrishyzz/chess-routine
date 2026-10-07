@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
+  DraggableAttributes,
+  DraggableSyntheticListeners,
   KeyboardSensor,
   PointerSensor,
   TouchSensor,
@@ -43,6 +45,7 @@ interface ProjectsProps {
   error: string | null;
   onError: (error: string | null) => void;
   onSessionLogged: () => void;
+  priorityCategory: StudyCategory | null;
 }
 
 const categories: StudyCategory[] = ['Games & analysis', 'Tactics', 'Endgame', 'Middlegame', 'Openings'];
@@ -392,14 +395,18 @@ function ProjectCard({
   onUpdate,
   onError,
   isDragging,
-  dragHandleProps,
+  dragAttributes,
+  dragListeners,
+  priorityCategory,
 }: {
   project: Project;
   userId: string;
   onUpdate: () => void;
   onError: (err: string) => void;
   isDragging?: boolean;
-  dragHandleProps?: any;
+  dragAttributes?: DraggableAttributes;
+  dragListeners?: DraggableSyntheticListeners;
+  priorityCategory: StudyCategory | null;
 }) {
   const [showLogForm, setShowLogForm] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -455,15 +462,27 @@ function ProjectCard({
 
   return (
     <div 
-      className={`rounded-lg border border-gray-800 bg-primary p-4 transition-opacity ${isDragging ? 'opacity-50' : ''}`}
+      className={`rounded-lg border bg-primary p-4 transition-all ${isDragging ? 'opacity-50' : ''} ${
+        project.category === priorityCategory
+          ? 'border-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.12)]'
+          : 'border-gray-800'
+      }`}
     >
       <div className="flex items-start justify-between gap-3">
         {/* Drag Handle */}
       <div 
-  {...dragHandleProps}
   className="flex shrink-0 items-center px-2 text-gray-600 hover:text-gray-300 cursor-grab active:cursor-grabbing transition"
   style={{ touchAction: 'none' }}
   title="Drag to reorder"
+  role="button"
+  tabIndex={dragAttributes?.tabIndex}
+  aria-disabled={dragAttributes?.['aria-disabled']}
+  aria-pressed={dragAttributes?.['aria-pressed']}
+  aria-roledescription={dragAttributes?.['aria-roledescription']}
+  aria-describedby={dragAttributes?.['aria-describedby']}
+  onPointerDown={event => dragListeners?.onPointerDown?.(event)}
+  onTouchStart={event => dragListeners?.onTouchStart?.(event)}
+  onKeyDown={event => dragListeners?.onKeyDown?.(event)}
 >
           <span className="text-lg leading-none">⠿</span>
         </div>
@@ -474,6 +493,11 @@ function ProjectCard({
             <span className="text-xs uppercase tracking-wider text-gray-400">
               {project.category}
             </span>
+            {project.category === priorityCategory && (
+              <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                Priority Sprint
+              </span>
+            )}
           </div>
 
           {project.resourceUrl && (
@@ -604,13 +628,14 @@ function SortableProjectCard(props: React.ComponentProps<typeof ProjectCard> & {
       <ProjectCard
         {...otherProps}
         isDragging={isDragging}
-        dragHandleProps={{ ...attributes, ...listeners }}
+        dragAttributes={attributes}
+        dragListeners={listeners}
       />
     </div>
   );
 }
 
-export function Projects({ userId, error, onError, onSessionLogged }: ProjectsProps) {
+export function Projects({ userId, error, onError, onSessionLogged, priorityCategory }: ProjectsProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -632,11 +657,7 @@ export function Projects({ userId, error, onError, onSessionLogged }: ProjectsPr
   })
 );
 
-  useEffect(() => {
-    void fetchProjects();
-  }, [userId]);
-
-  async function fetchProjects() {
+  const fetchProjects = useCallback(async () => {
     setIsLoading(true);
     onError(null);
 
@@ -686,7 +707,11 @@ export function Projects({ userId, error, onError, onSessionLogged }: ProjectsPr
 
     setProjects(projectsWithTime);
     setIsLoading(false);
-  }
+  }, [userId, onError]);
+
+  useEffect(() => {
+    void fetchProjects();
+  }, [fetchProjects]);
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -776,6 +801,7 @@ export function Projects({ userId, error, onError, onSessionLogged }: ProjectsPr
                   id={project.id}
                   project={project}
                   userId={userId}
+                  priorityCategory={priorityCategory}
                   onUpdate={() => {
                     void fetchProjects();
                     onSessionLogged();

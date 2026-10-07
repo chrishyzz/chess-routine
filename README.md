@@ -8,6 +8,7 @@ An app for self-directed chess training.
 - Log different types of study – from solving puzzles to playing or reading a book.
 - Visual charts showing your progress over time
 - Use the app seamlessly across devices
+- Focus Mode sprints with a priority category, duration target, and time-distribution goal
 
 ## How to Use
 
@@ -15,10 +16,13 @@ An app for self-directed chess training.
 2. Log a session - Record study time, category, and optional notes
 3. Track projects - Create long-running goals and log progress against them
 4. View progress - See your activity heatmap and time breakdown by category
+5. Start a Focus Mode sprint - Choose a category, target ratio, and time-based or logged-hours target
 
 ## Data Storage
 
 Study sessions are stored in a Supabase database, tied to your Lichess account. Your data is available across devices and persists between sessions.
+
+Focus Mode configurations are stored in the `focus_sprints` Supabase table and remain active across devices until the time-based sprint ends or you end it manually. Apply the Focus Mode migration in `supabase_migrations.sql` in the Supabase SQL editor before using this feature.
 
 ## Lichess OAuth Setup
 

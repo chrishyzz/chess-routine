@@ -58,3 +58,14 @@ create table category_targets (
   unique(user_id, category)
 );
 alter table category_targets disable row level security;
+
+-- Persist each user's active Focus Mode / Priority Sprint.
+create table if not exists focus_sprints (
+  user_id text primary key,
+  category text not null,
+  duration_type text not null check (duration_type in ('time', 'volume')),
+  duration_value numeric not null check (duration_value > 0),
+  target_ratio integer not null check (target_ratio between 1 and 99),
+  started_at timestamptz not null default now()
+);
+alter table focus_sprints disable row level security;

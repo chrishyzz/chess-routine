@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { StudyCategory } from './StudySessionForm';
+import { FocusSprint } from './FocusMode';
 
 export interface AnalyticsSession {
   category: StudyCategory;
@@ -23,6 +24,7 @@ export interface AnalyticsSession {
 
 interface StudyAnalyticsProps {
   sessions: AnalyticsSession[];
+  focusSprint?: FocusSprint | null;
 }
 
 interface CategoryPieProps extends StudyAnalyticsProps {
@@ -457,7 +459,7 @@ function WeeklyTimeChart({ sessions }: StudyAnalyticsProps) {
   );
 }
 
-function CategoryPie({ sessions, userId }: CategoryPieProps) {
+function CategoryPie({ sessions, userId, focusSprint }: CategoryPieProps) {
   const [range, setRange] = useState<'7d' | 'all'>('7d');
   const [showTargetEditor, setShowTargetEditor] = useState(false);
   const [targets, setTargets] = useState<Record<StudyCategory, number | null>>({
@@ -480,13 +482,19 @@ function CategoryPie({ sessions, userId }: CategoryPieProps) {
   const filteredSessions = range === 'all'
     ? sessions
     : sessions.filter(session => new Date(session.createdAt).getTime() >= cutoff);
+  const displayedSessions = focusSprint
+    ? sessions.filter(session => new Date(session.createdAt).getTime() >= new Date(focusSprint.startedAt).getTime())
+    : filteredSessions;
   const totals = categories.map(category => ({
     name: category,
-    value: filteredSessions
+    value: displayedSessions
       .filter(session => normalizeCategory(session.category) === category)
       .reduce((sum, session) => sum + session.durationMinutes, 0),
   }));
   const totalMinutes = totals.reduce((sum, item) => sum + item.value, 0);
+  const otherCategoryMinutes = focusSprint
+    ? totals.filter(item => item.name !== focusSprint.category).reduce((sum, item) => sum + item.value, 0)
+    : 0;
 
   useEffect(() => {
     if (!userId) return;
@@ -600,20 +608,26 @@ function CategoryPie({ sessions, userId }: CategoryPieProps) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Time by category</h2>
-          <p className="mt-1 text-base text-gray-400">{totalMinutes} minutes logged</p>
+          <p className="mt-1 text-base text-gray-400">
+            {totalMinutes} minutes logged{focusSprint ? ' since sprint started' : ''}
+          </p>
         </div>
-        <div className="flex rounded border border-gray-700 p-0.5 text-sm">
-          {([['7d', 'Last 7 Days'], ['all', 'All Time']] as const).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setRange(value)}
-              className={`rounded px-3 py-1.5 transition ${range === value ? 'bg-accent text-white' : 'text-gray-400 hover:text-white'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {focusSprint ? (
+          <span className="rounded border border-amber-400/30 px-3 py-1.5 text-xs text-amber-200">Priority Sprint breakdown</span>
+        ) : (
+          <div className="flex rounded border border-gray-700 p-0.5 text-sm">
+            {([['7d', 'Last 7 Days'], ['all', 'All Time']] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setRange(value)}
+                className={`rounded px-3 py-1.5 transition ${range === value ? 'bg-accent text-white' : 'text-gray-400 hover:text-white'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {totals.length === 0 ? (
@@ -633,7 +647,9 @@ function CategoryPie({ sessions, userId }: CategoryPieProps) {
           <div className="w-full min-w-0 space-y-2 text-sm sm:w-auto sm:space-y-3 sm:text-base">
             {totals.map(item => {
               const percentage = totalMinutes === 0 ? 0 : Math.round(item.value / totalMinutes * 100);
-              const target = targets[item.name as StudyCategory];
+              const target = focusSprint
+                ? item.name === focusSprint.category ? focusSprint.targetRatio : null
+                : targets[item.name as StudyCategory];
               return (
                 <div key={item.name} className="flex items-center justify-between gap-3 leading-6">
                   <span className="flex min-w-0 items-center gap-2 text-gray-300">
@@ -653,6 +669,21 @@ function CategoryPie({ sessions, userId }: CategoryPieProps) {
                 </div>
               );
             })}
+            {focusSprint && (() => {
+              const percentage = totalMinutes === 0 ? 0 : Math.round(otherCategoryMinutes / totalMinutes * 100);
+              const target = 100 - focusSprint.targetRatio;
+              return (
+                <div className="flex items-center justify-between gap-3 border-t border-gray-800 pt-2 leading-6">
+                  <span className="text-gray-300">Everything else</span>
+                  <span className="shrink-0">
+                    <span className={Math.abs(percentage - target) <= 5 ? 'text-green-400' : 'text-red-400'}>
+                      {percentage}%
+                    </span>
+                    <span className="text-gray-500"> · target {target}%</span>
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -667,6 +698,7 @@ function CategoryPie({ sessions, userId }: CategoryPieProps) {
 
       {showTargetEditor && (
         <div className="mt-4 rounded border border-gray-700 bg-gray-900/40 p-3 text-sm">
+          {focusSprint && <p className="mb-3 text-xs text-amber-200">Sprint targets temporarily override these saved targets in the breakdown.</p>}
           <div className="grid gap-3 sm:grid-cols-2">
             {categories.map(category => (
               <label key={category} className="flex items-center justify-between gap-3">
@@ -713,13 +745,13 @@ function CategoryPie({ sessions, userId }: CategoryPieProps) {
   );
 }
 
-export function StudyAnalytics({ sessions, userId }: CategoryPieProps) {
+export function StudyAnalytics({ sessions, userId, focusSprint }: CategoryPieProps) {
   return (
     <div className="mt-8 grid gap-6">
       <Pace sessions={sessions} />
       <Heatmap sessions={sessions} />
       <WeeklyTimeChart sessions={sessions} />
-      <CategoryPie sessions={sessions} userId={userId} />
+      <CategoryPie sessions={sessions} userId={userId} focusSprint={focusSprint} />
     </div>
   );
 }

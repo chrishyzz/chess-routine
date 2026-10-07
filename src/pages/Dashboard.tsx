@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { StudySessionForm, StudyCategory } from '../components/StudySessionForm';
 import { StudyAnalytics } from '../components/StudyAnalytics';
 import { Projects } from '../components/Projects';
 import { Goals } from '../components/Goals';
 import { supabase } from '../lib/supabase';
+import { FocusMode, FocusSprint } from '../components/FocusMode';
 
 interface StudySession {
   id: string;
@@ -93,10 +94,11 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
   const { user, logout } = useAuth();
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [analyticsSessions, setAnalyticsSessions] = useState<AnalyticsSession[]>([]);
+  const [focusSprint, setFocusSprint] = useState<FocusSprint | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     if (!user) {
       setSessions([]);
       setAnalyticsSessions([]);
@@ -148,20 +150,11 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
     })));
 
     setIsLoading(false);
-  };
+  }, [user]);
 
   useEffect(() => {
-    let isCancelled = false;
-    async function fetch() {
-      if (!isCancelled) {
-        await fetchSessions();
-      }
-    }
-    void fetch();
-    return () => {
-      isCancelled = true;
-    };
-  }, [user]);
+    void fetchSessions();
+  }, [fetchSessions]);
 
   async function logSession(session: Omit<StudySession, 'id' | 'createdAt'>): Promise<boolean> {
     if (!user) {
@@ -264,7 +257,24 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
 
         {user && (
           <div className="mt-6">
-            <Projects userId={user.id} error={error} onError={setError} onSessionLogged={() => void fetchSessions()} />
+            <FocusMode
+              userId={user.id}
+              sessions={analyticsSessions}
+              onFocusChange={setFocusSprint}
+              onError={setError}
+            />
+          </div>
+        )}
+
+        {user && (
+          <div className="mt-6">
+            <Projects
+              userId={user.id}
+              error={error}
+              onError={setError}
+              onSessionLogged={() => void fetchSessions()}
+              priorityCategory={focusSprint?.category ?? null}
+            />
           </div>
         )}
 
@@ -272,7 +282,13 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
 
         {user && <Goals userId={user.id} sessions={analyticsSessions} error={error} onError={setError} />}
 
-        {!isLoading && <StudyAnalytics sessions={analyticsSessions} userId={user?.id ?? ''} />}
+        {!isLoading && (
+          <StudyAnalytics
+            sessions={analyticsSessions}
+            userId={user?.id ?? ''}
+            focusSprint={focusSprint}
+          />
+        )}
 
         <section className="mt-8 min-w-0">
           <h2 className="mb-4 text-xl font-semibold">Past sessions</h2>
