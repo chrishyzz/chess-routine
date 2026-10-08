@@ -12,6 +12,7 @@ export interface FocusModeConfig {
 
 interface FocusModeProps {
   userId: string;
+  isGuest: boolean;
   sessions: { category: StudyCategory; durationMinutes: number; sessionDate: string }[];
   onFocusChange: (focusMode: FocusModeConfig | null) => void;
   onError: (error: string | null) => void;
@@ -19,7 +20,7 @@ interface FocusModeProps {
 
 const categories: StudyCategory[] = ['Games & analysis', 'Tactics', 'Endgame', 'Middlegame', 'Openings'];
 
-export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusModeProps) {
+export function FocusMode({ userId, isGuest, sessions, onFocusChange, onError }: FocusModeProps) {
   const [focusMode, setFocusMode] = useState<FocusModeConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -32,6 +33,14 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
   const expiryHandled = useRef(false);
 
   const clearFocusMode = useCallback(async () => {
+    if (isGuest) {
+      setFocusMode(null);
+      onFocusChange(null);
+      expiryHandled.current = false;
+      onError(null);
+      return;
+    }
+
     setIsSaving(true);
     const { error } = await supabase
       .from('focus_sprints')
@@ -46,9 +55,14 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
     onFocusChange(null);
     expiryHandled.current = false;
     onError(null);
-  }, [userId, onError, onFocusChange]);
+  }, [isGuest, userId, onError, onFocusChange]);
 
   useEffect(() => {
+    if (isGuest) {
+      setIsLoading(false);
+      return;
+    }
+
     let active = true;
     async function fetchFocusMode() {
       const { data, error } = await supabase
@@ -78,7 +92,7 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
     return () => {
       active = false;
     };
-  }, [userId, onError, onFocusChange]);
+  }, [isGuest, userId, onError, onFocusChange]);
 
   useEffect(() => {
     if (!focusMode) return;
@@ -124,6 +138,22 @@ export function FocusMode({ userId, sessions, onFocusChange, onError }: FocusMod
     setIsSaving(true);
     onError(null);
     const startedAt = new Date().toISOString();
+    if (isGuest) {
+      const nextFocusMode: FocusModeConfig = {
+        category,
+        durationType,
+        durationValue: value,
+        targetRatio: ratio,
+        startedAt,
+      };
+      expiryHandled.current = false;
+      setFocusMode(nextFocusMode);
+      onFocusChange(nextFocusMode);
+      setShowSetup(false);
+      setIsSaving(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('focus_sprints')
       .upsert({

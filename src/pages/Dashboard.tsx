@@ -329,10 +329,11 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
         </section>
 
-        {user && (
+        {(user || isGuest) && (
           <div className="mt-6">
             <FocusMode
-              userId={user.id}
+              userId={user?.id ?? ''}
+              isGuest={isGuest}
               sessions={analyticsSessions}
               onFocusChange={setFocusMode}
               onError={setError}
