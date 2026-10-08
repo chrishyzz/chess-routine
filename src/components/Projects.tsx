@@ -769,7 +769,7 @@ export function Projects({
     unitName: 'pages',
     goal: 543,
     currentProgress: 45,
-    totalTimeMinutes: 0,
+    totalTimeMinutes: 60,
     createdAt: new Date().toISOString(),
     archivedAt: null,
     sortOrder: 0,
