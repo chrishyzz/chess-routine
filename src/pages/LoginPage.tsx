@@ -1,7 +1,7 @@
 import { useAuth } from '../AuthContext';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, enterGuestMode } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary via-primary to-secondary flex items-center justify-center px-4">
@@ -43,6 +43,14 @@ export function LoginPage() {
           >
             <span>Login with Lichess</span>
             <span>→</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={enterGuestMode}
+            className="mt-3 w-full rounded-lg border border-gray-700 py-3 px-4 font-semibold text-gray-300 transition hover:border-gray-500 hover:bg-gray-800/50 hover:text-white"
+          >
+            Try as Guest
           </button>
 
           {/* Footer */}

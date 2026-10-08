@@ -19,9 +19,11 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  isGuest: boolean;
   accessToken: string | null;
   loading: boolean;
   error: string | null;
+  enterGuestMode: () => void;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   decoratedFetch: HttpClient | null;
@@ -41,6 +43,7 @@ const oauth = new OAuth2AuthCodePKCE({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             username: data.username || data.id,
           };
           setUser(authenticatedUser);
+          setIsGuest(false);
           localStorage.setItem(sessionStorageKey, JSON.stringify({
             user: authenticatedUser,
             accessToken: token,
@@ -101,6 +105,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function enterGuestMode() {
+    setUser(null);
+    setIsGuest(true);
+    setError(null);
+  }
+
   async function logout() {
     try {
       if (accessToken) {
@@ -115,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout error:', err);
     } finally {
       setUser(null);
+      setIsGuest(false);
       setAccessToken(null);
       setDecoratedFetch(null);
       localStorage.removeItem(sessionStorageKey);
@@ -126,9 +137,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        isGuest,
         accessToken,
         loading,
         error,
+        enterGuestMode,
         login,
         logout,
         decoratedFetch,

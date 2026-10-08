@@ -6,14 +6,14 @@ import { About } from './components/About';
 import { Loader } from './components/Loader';
 
 function App() {
-  const { user, loading, error } = useAuth();
+  const { user, isGuest, loading, error } = useAuth();
   const [currentView, setCurrentView] = useState<'dashboard' | 'about'>('dashboard');
 
   if (loading) {
     return <Loader />;
   }
 
-  if (error) {
+  if (error && !isGuest) {
     return (
       <div className="min-h-screen bg-secondary flex items-center justify-center">
         <div className="text-center text-red-400">
@@ -24,7 +24,7 @@ function App() {
     );
   }
 
-  if (!user) {
+  if (!user && !isGuest) {
     return <LoginPage />;
   }
 

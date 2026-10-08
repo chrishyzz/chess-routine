@@ -44,9 +44,20 @@ export interface Project {
 
 interface ProjectsProps {
   userId: string;
+  isGuest: boolean;
   error: string | null;
   onError: (error: string | null) => void;
   onSessionLogged: () => void;
+  onGuestSessionLogged: (session: {
+    id: string;
+    category: StudyCategory;
+    durationMinutes: number;
+    puzzlesSolved: number;
+    gamesPlayed: number;
+    notes: string;
+    createdAt: string;
+    sessionDate: string;
+  }) => void;
   focusCategory: StudyCategory | null;
 }
 
@@ -247,12 +258,25 @@ function NewProjectForm({ userId, onSuccess, onCancel }: { userId: string; onSuc
 function LogSessionForm({
   project,
   userId,
+  isGuest,
   onSuccess,
+  onGuestSave,
   onCancel,
 }: {
   project: Project;
   userId: string;
+  isGuest: boolean;
   onSuccess: () => void;
+  onGuestSave: (session: {
+    id: string;
+    category: StudyCategory;
+    durationMinutes: number;
+    puzzlesSolved: number;
+    gamesPlayed: number;
+    notes: string;
+    createdAt: string;
+    sessionDate: string;
+  }, progress: number) => void;
   onCancel: () => void;
 }) {
   const [timeMinutes, setTimeMinutes] = useState('30');
@@ -295,8 +319,22 @@ function LogSessionForm({
     const createdAt = new Date().toISOString();
 
     try {
-      // Insert study session
       const formattedNotes = notes.trim() ? `[Project: ${project.title}] ${notes.trim()}` : `[Project: ${project.title}]`;
+      if (isGuest) {
+        onGuestSave({
+          id: `guest-project-session-${Date.now()}`,
+          category: project.category,
+          durationMinutes: time,
+          puzzlesSolved: 0,
+          gamesPlayed: 0,
+          notes: formattedNotes,
+          createdAt,
+          sessionDate,
+        }, project.type === 'progress' ? Number(progress) : 0);
+        onSuccess();
+        return;
+      }
+
       const { error: insertError } = await supabase.from('study_sessions').insert({
         user_id: userId,
         project_id: project.id,
@@ -433,6 +471,9 @@ function LogSessionForm({
 function ProjectCard({
   project,
   userId,
+  isGuest,
+  onGuestSessionLogged,
+  onGuestProjectSession,
   onUpdate,
   onError,
   isDragging,
@@ -444,6 +485,9 @@ function ProjectCard({
 }: {
   project: Project;
   userId: string;
+  isGuest: boolean;
+  onGuestSessionLogged: ProjectsProps['onGuestSessionLogged'];
+  onGuestProjectSession: (projectId: string, durationMinutes: number, progress: number) => void;
   onUpdate: () => void;
   onError: (err: string) => void;
   isDragging?: boolean;
@@ -461,6 +505,11 @@ function ProjectCard({
 
   async function handleArchive() {
     if (!window.confirm('Archive this project?')) {
+      return;
+    }
+
+    if (isGuest) {
+      onUpdate();
       return;
     }
 
@@ -482,6 +531,11 @@ function ProjectCard({
 
   async function handleDelete() {
     setShowDeleteConfirm(false);
+    if (isGuest) {
+      onUpdate();
+      return;
+    }
+
     const { error } = await supabase
       .from('projects')
       .delete()
@@ -624,7 +678,7 @@ function ProjectCard({
         >
           {isUpdatingStatus ? 'Updating...' : project.isActive ? 'Move to backlog' : 'Promote to active'}
         </button>
-        {!showDeleteConfirm && (
+        {!isGuest && !showDeleteConfirm && (
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
@@ -633,7 +687,7 @@ function ProjectCard({
             Delete
           </button>
         )}
-        {project.type === 'progress' && progressPercent >= 100 && (
+        {!isGuest && project.type === 'progress' && progressPercent >= 100 && (
           <button
             type="button"
             onClick={() => void handleArchive()}
@@ -650,6 +704,11 @@ function ProjectCard({
           <LogSessionForm
             project={project}
             userId={userId}
+            isGuest={isGuest}
+            onGuestSave={(session, progress) => {
+              onGuestSessionLogged(session);
+              onGuestProjectSession(project.id, session.durationMinutes, progress);
+            }}
             onSuccess={() => {
               setIsSuccess(true);
               setTimeout(() => setIsSuccess(false), 1500);
@@ -692,8 +751,31 @@ function SortableProjectCard(props: React.ComponentProps<typeof ProjectCard> & {
   );
 }
 
-export function Projects({ userId, error, onError, onSessionLogged, focusCategory }: ProjectsProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
+export function Projects({
+  userId,
+  isGuest,
+  error,
+  onError,
+  onSessionLogged,
+  onGuestSessionLogged,
+  focusCategory,
+}: ProjectsProps) {
+  const [projects, setProjects] = useState<Project[]>(() => isGuest ? [{
+    id: 'guest-endgame-project',
+    userId: 'guest',
+    title: "Silman's Complete Endgame Course",
+    category: 'Endgame',
+    type: 'progress',
+    unitName: 'pages',
+    goal: 543,
+    currentProgress: 45,
+    totalTimeMinutes: 0,
+    createdAt: new Date().toISOString(),
+    archivedAt: null,
+    sortOrder: 0,
+    resourceUrl: null,
+    isActive: true,
+  }] : []);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewForm, setShowNewForm] = useState(false);
   const [isBacklogOpen, setIsBacklogOpen] = useState(false);
@@ -717,6 +799,11 @@ export function Projects({ userId, error, onError, onSessionLogged, focusCategor
 );
 
   const fetchProjects = useCallback(async () => {
+    if (isGuest) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     onError(null);
 
@@ -772,7 +859,7 @@ export function Projects({ userId, error, onError, onSessionLogged, focusCategor
 
     setProjects(projectsWithTime);
     setIsLoading(false);
-  }, [userId, onError]);
+  }, [isGuest, userId, onError]);
 
   useEffect(() => {
     void fetchProjects();
@@ -782,6 +869,13 @@ export function Projects({ userId, error, onError, onSessionLogged, focusCategor
   const backlogProjects = projects.filter(project => !project.isActive);
 
   async function toggleProjectStatus(project: Project) {
+    if (isGuest) {
+      setProjects(currentProjects => currentProjects.map(item =>
+        item.id === project.id ? { ...item, isActive: !item.isActive } : item
+      ));
+      return;
+    }
+
     setUpdatingProjectId(project.id);
     onError(null);
     const { data, error: updateError } = await supabase
@@ -828,6 +922,8 @@ export function Projects({ userId, error, onError, onSessionLogged, focusCategor
       ...currentProjects.filter(project => !project.isActive),
     ]);
 
+    if (isGuest) return;
+
     // Keep queue ordering independent of backlog ordering.
     const updates = newActiveProjects.map((project, index) =>
       supabase.from('projects').update({ sort_order: index }).eq('id', project.id)
@@ -843,6 +939,19 @@ export function Projects({ userId, error, onError, onSessionLogged, focusCategor
 
     // Refresh to confirm changes
     await fetchProjects();
+  }
+
+  function updateGuestProjectSession(projectId: string, durationMinutes: number, progress: number) {
+    setProjects(currentProjects => currentProjects.map(project => project.id === projectId
+      ? {
+        ...project,
+        totalTimeMinutes: project.totalTimeMinutes + durationMinutes,
+        currentProgress: project.type === 'progress'
+          ? (project.currentProgress ?? 0) + progress
+          : project.currentProgress,
+      }
+      : project
+    ));
   }
 
   if (isLoading) {
@@ -879,7 +988,10 @@ export function Projects({ userId, error, onError, onSessionLogged, focusCategor
                   id={project.id}
                   project={project}
                   userId={userId}
+                  isGuest={isGuest}
                   focusCategory={focusCategory}
+                  onGuestSessionLogged={onGuestSessionLogged}
+                  onGuestProjectSession={updateGuestProjectSession}
                   onToggleActive={toggleProjectStatus}
                   isUpdatingStatus={updatingProjectId === project.id}
                   onUpdate={() => {
@@ -914,7 +1026,10 @@ export function Projects({ userId, error, onError, onSessionLogged, focusCategor
                   key={project.id}
                   project={project}
                   userId={userId}
+                  isGuest={isGuest}
                   focusCategory={focusCategory}
+                  onGuestSessionLogged={onGuestSessionLogged}
+                  onGuestProjectSession={updateGuestProjectSession}
                   onToggleActive={toggleProjectStatus}
                   isUpdatingStatus={updatingProjectId === project.id}
                   onUpdate={() => {
@@ -929,7 +1044,7 @@ export function Projects({ userId, error, onError, onSessionLogged, focusCategor
         )}
       </div>
 
-      {showNewForm && (
+      {!isGuest && showNewForm && (
         <div className="mt-6">
           <NewProjectForm
             userId={userId}
@@ -943,13 +1058,15 @@ export function Projects({ userId, error, onError, onSessionLogged, focusCategor
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => setShowNewForm(!showNewForm)}
-        className="mt-6 text-sm text-gray-400 underline transition hover:text-gray-300"
-      >
-        {showNewForm ? 'Cancel' : '+ New Project'}
-      </button>
+      {!isGuest && (
+        <button
+          type="button"
+          onClick={() => setShowNewForm(!showNewForm)}
+          className="mt-6 text-sm text-gray-400 underline transition hover:text-gray-300"
+        >
+          {showNewForm ? 'Cancel' : '+ New Project'}
+        </button>
+      )}
     </section>
   );
 }

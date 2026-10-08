@@ -30,6 +30,14 @@ interface AnalyticsSession {
   sessionDate: string;
 }
 
+function getTodayDate(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getDateLabel(sessionDate: string): string {
   const date = new Date(`${sessionDate}T12:00:00`);
   const today = new Date();
@@ -89,7 +97,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onOpenAbout }: DashboardProps) {
-  const { user, logout } = useAuth();
+  const { user, isGuest, login, logout } = useAuth();
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [analyticsSessions, setAnalyticsSessions] = useState<AnalyticsSession[]>([]);
   const [focusMode, setFocusMode] = useState<FocusModeConfig | null>(null);
@@ -97,6 +105,26 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
+    if (isGuest) {
+      const guestSession: StudySession = {
+        id: 'guest-session-today',
+        category: 'Endgame',
+        durationMinutes: 60,
+        puzzlesSolved: 0,
+        gamesPlayed: 0,
+        notes: 'Worked through Silman’s Complete Endgame Course.',
+        createdAt: new Date().toISOString(),
+        sessionDate: getTodayDate(),
+      };
+      setSessions(current => current.some(session => session.id === guestSession.id) ? current : [guestSession, ...current]);
+      setAnalyticsSessions(current => current.some(session => session.id === guestSession.id) ? current : [
+        { ...guestSession, notes: '' },
+        ...current,
+      ]);
+      setIsLoading(false);
+      return;
+    }
+
     if (!user) {
       setSessions([]);
       setAnalyticsSessions([]);
@@ -157,13 +185,25 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
     })));
 
     setIsLoading(false);
-  }, [user]);
+  }, [isGuest, user]);
 
   useEffect(() => {
     void fetchSessions();
   }, [fetchSessions]);
 
   async function logSession(session: Omit<StudySession, 'id' | 'createdAt'>): Promise<boolean> {
+    if (isGuest) {
+      const newSession: StudySession = {
+        ...session,
+        id: `guest-session-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+      };
+      setSessions(currentSessions => [newSession, ...currentSessions]);
+      setAnalyticsSessions(currentSessions => [{ ...newSession, notes: '' }, ...currentSessions]);
+      setError(null);
+      return true;
+    }
+
     if (!user) {
       return false;
     }
@@ -207,6 +247,13 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
   }
 
   async function deleteSession(sessionId: string) {
+    if (isGuest) {
+      if (!window.confirm('Delete this study session?')) return;
+      setSessions(currentSessions => currentSessions.filter(session => session.id !== sessionId));
+      setAnalyticsSessions(currentSessions => currentSessions.filter(session => session.id !== sessionId));
+      return;
+    }
+
     if (!user || !window.confirm('Delete this study session?')) {
       return;
     }
@@ -235,7 +282,7 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-5">
           <div>
             <h1 className="text-2xl font-bold">Chess Routine</h1>
-            <p className="mt-1 text-sm text-gray-400">Welcome, {user?.username}</p>
+            <p className="mt-1 text-sm text-gray-400">Welcome, {isGuest ? 'Guest' : user?.username}</p>
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -256,6 +303,24 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
         </div>
       </header>
 
+      {isGuest && (
+        <div className="border-b border-amber-400/20 bg-amber-400/5 px-4 py-3">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm text-gray-300">You&apos;re viewing Chess Routine in Guest Mode.</p>
+              <p className="mt-0.5 text-xs text-gray-500">Connect with Lichess to save your progress permanently.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void login()}
+              className="rounded border border-amber-400/50 px-3 py-1.5 text-sm font-medium text-amber-200 transition hover:bg-amber-400/10"
+            >
+              Connect with Lichess
+            </button>
+          </div>
+        </div>
+      )}
+
       <main className="mx-auto min-w-0 max-w-3xl overflow-x-hidden px-4 py-8">
         <section className="min-w-0 rounded-lg bg-primary p-4 sm:p-6">
           <h2 className="mb-1 text-xl font-semibold">Study session</h2>
@@ -275,13 +340,18 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
           </div>
         )}
 
-        {user && (
+        {(user || isGuest) && (
           <div className="mt-6">
             <Projects
-              userId={user.id}
+              userId={user?.id ?? ''}
+              isGuest={isGuest}
               error={error}
               onError={setError}
               onSessionLogged={() => void fetchSessions()}
+              onGuestSessionLogged={session => {
+                setSessions(current => [session, ...current]);
+                setAnalyticsSessions(current => [{ ...session, notes: '' }, ...current]);
+              }}
               focusCategory={focusMode?.category ?? null}
             />
           </div>
