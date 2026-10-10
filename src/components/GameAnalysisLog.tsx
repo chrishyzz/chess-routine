@@ -9,8 +9,8 @@ interface GameLog {
   lichess_url: string | null;
   game_result: GameResult | null;
   rating_opening: number;
-  rating_middlegame: number;
-  rating_endgame: number;
+  rating_middlegame: number | null;
+  rating_endgame: number | null;
   mistake_tags: string[];
   focus_rating: number;
   narrative_note: string | null;
@@ -20,8 +20,8 @@ interface GameLogDraft {
   lichess_url: string;
   game_result: GameResult | '';
   rating_opening: number;
-  rating_middlegame: number;
-  rating_endgame: number;
+  rating_middlegame: number | null;
+  rating_endgame: number | null;
   mistake_tags: string[];
   focus_rating: number;
   narrative_note: string;
@@ -90,8 +90,8 @@ function isGameLog(value: unknown): value is GameLog {
     && (typeof log.lichess_url === 'string' || log.lichess_url === null)
     && (log.game_result === 'Win' || log.game_result === 'Loss' || log.game_result === 'Draw' || log.game_result === null)
     && typeof log.rating_opening === 'number'
-    && typeof log.rating_middlegame === 'number'
-    && typeof log.rating_endgame === 'number'
+    && (typeof log.rating_middlegame === 'number' || log.rating_middlegame === null)
+    && (typeof log.rating_endgame === 'number' || log.rating_endgame === null)
     && Array.isArray(log.mistake_tags)
     && log.mistake_tags.every(tag => typeof tag === 'string')
     && typeof log.focus_rating === 'number'
@@ -134,10 +134,27 @@ export function GameAnalysisLog() {
   const [draft, setDraft] = useState<GameLogDraft>(initialDraft);
   const [logs, setLogs] = useState<GameLog[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setIsOpen(false);
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     let isMounted = true;
@@ -276,157 +293,217 @@ export function GameAnalysisLog() {
   }
 
   return (
-    <section className="mt-6 min-w-0 rounded-lg bg-primary p-4 sm:p-6">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold">Game analysis</h2>
-          <p className="mt-1 text-sm text-gray-400">
-            {userId ? 'Saved to your account.' : 'Guest logs are saved on this device only.'}
-          </p>
-        </div>
+    <>
+      <section className="mb-6">
         <button
           type="button"
-          onClick={() => downloadCsv(logs)}
-          disabled={logs.length === 0}
-          className="rounded border border-gray-700 px-3 py-2 text-sm text-gray-300 transition hover:border-gray-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => setIsOpen(true)}
+          className="relative w-full overflow-hidden rounded-lg border border-gray-800 bg-primary/60 px-4 py-4 text-center font-semibold text-gray-100 transition duration-300 hover:border-[#c8a96e]/40 hover:bg-primary/80"
+          style={{
+            backgroundImage: 'linear-gradient(to right, rgba(200, 169, 110, 0.09) 0%, rgba(200, 169, 110, 0.025) 100%)',
+          }}
         >
-          Export CSV
+          <span className="relative z-10">Post-game analysis</span>
         </button>
-      </div>
+      </section>
 
-      {isLoading ? (
-        <p className="text-sm text-gray-400">Loading saved game logs...</p>
-      ) : (
-        <form onSubmit={event => void handleSubmit(event)} className="space-y-7">
-          <fieldset className="space-y-4">
-            <legend className="mb-3 text-base font-semibold">A. Game link &amp; metadata</legend>
-            <div>
-              <label htmlFor="game-lichess-url" className="mb-2 block text-sm font-medium text-gray-300">Lichess game or study link</label>
-              <input
-                id="game-lichess-url"
-                type="url"
-                value={draft.lichess_url}
-                onChange={event => updateDraft('lichess_url', event.target.value)}
-                placeholder="https://lichess.org/..."
-                className="w-full rounded border border-gray-700 bg-secondary px-3 py-2 text-white focus:border-accent focus:outline-none"
-              />
-            </div>
-            <fieldset>
-              <legend className="mb-2 block text-sm font-medium text-gray-300">Result</legend>
-              <div className="flex flex-wrap gap-2">
-                {(['Win', 'Loss', 'Draw'] as const).map(result => (
-                  <label key={result} className={`cursor-pointer rounded-full border px-4 py-2 text-sm transition ${draft.game_result === result ? 'border-accent bg-accent/15 text-white' : 'border-gray-700 text-gray-300 hover:border-gray-500'}`}>
-                    <input
-                      type="radio"
-                      name="game-result"
-                      value={result}
-                      checked={draft.game_result === result}
-                      onChange={() => updateDraft('game_result', result)}
-                      className="sr-only"
-                    />
-                    {result}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          </fieldset>
-
-          <fieldset className="space-y-5">
-            <legend className="mb-1 text-base font-semibold">B. Phase-by-phase performance</legend>
-            {([
-              ['Opening', 'rating_opening'],
-              ['Middlegame', 'rating_middlegame'],
-              ['Endgame', 'rating_endgame'],
-            ] as const).map(([phase, key]) => (
-              <div key={key}>
-                <label htmlFor={key} className="mb-2 block text-sm font-medium text-gray-300">{phase}</label>
-                <input
-                  id={key}
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="1"
-                  value={draft[key]}
-                  onChange={event => updateDraft(key, Number(event.target.value))}
-                  className="w-full cursor-pointer accent-accent"
-                  aria-label={`${phase} performance`}
-                />
-                <div className="flex justify-between text-xs text-gray-500" aria-hidden="true">
-                  <span>Badly</span>
-                  <span>Okay</span>
-                  <span>Great</span>
-                </div>
-              </div>
-            ))}
-          </fieldset>
-
-          <fieldset className="space-y-3">
-            <legend className="mb-1 text-base font-semibold">C. Root-cause checklist</legend>
-            {categories.map(category => (
-              <details key={category.name} className="rounded border border-gray-800 bg-secondary/50 px-3">
-                <summary className="cursor-pointer py-3 text-sm font-medium text-gray-200">{category.name}</summary>
-                <div className="space-y-3 border-t border-gray-800 py-3">
-                  {category.tags.map(tag => (
-                    <label key={tag} className="flex cursor-pointer items-start gap-3 text-sm text-gray-300">
-                      <input
-                        type="checkbox"
-                        checked={draft.mistake_tags.includes(tag)}
-                        onChange={() => toggleTag(tag)}
-                        className="mt-0.5 accent-accent"
-                      />
-                      <span>{tag}</span>
-                    </label>
-                  ))}
-                </div>
-              </details>
-            ))}
-          </fieldset>
-
-          <fieldset>
-            <legend className="mb-3 text-base font-semibold">D. Focus &amp; reflection</legend>
-            <label htmlFor="game-focus-rating" className="mb-2 block text-sm font-medium text-gray-300">Focus / energy</label>
-            <input
-              id="game-focus-rating"
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              value={draft.focus_rating}
-              onChange={event => updateDraft('focus_rating', Number(event.target.value))}
-              className="w-full cursor-pointer accent-accent"
-              aria-label="Focus and energy"
-            />
-            <div className="flex justify-between gap-4 text-xs text-gray-500">
-              <span>Exhausted &amp; Distracted</span>
-              <span className="text-right">Refreshed &amp; Focused</span>
-            </div>
-            <div className="mt-5">
-              <label htmlFor="game-narrative-note" className="mb-2 block text-sm font-medium text-gray-300">
-                Reflection <span className="font-normal text-gray-500">(optional, up to 300 characters)</span>
-              </label>
-              <textarea
-                id="game-narrative-note"
-                rows={3}
-                maxLength={300}
-                value={draft.narrative_note}
-                onChange={event => updateDraft('narrative_note', event.target.value)}
-                placeholder="What would you like to remember from this game?"
-                className="w-full resize-y rounded border border-gray-700 bg-secondary px-3 py-2 text-white focus:border-accent focus:outline-none"
-              />
-            </div>
-          </fieldset>
-
-          {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
-          {success && <p role="status" className="text-sm text-green-400">Game analysis saved.</p>}
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="w-full rounded bg-accent px-5 py-3 font-semibold text-white transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) setIsOpen(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="game-analysis-title"
+            className="max-h-[95vh] w-full max-w-2xl overflow-y-auto rounded-t-xl border border-gray-700 bg-primary p-4 shadow-2xl sm:rounded-xl sm:p-6"
           >
-            {isSaving ? 'Saving...' : 'Save game analysis'}
-          </button>
-        </form>
+            <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 id="game-analysis-title" className="text-xl font-semibold">Post-game analysis</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  {userId ? 'Saved to your account.' : 'Guest logs are saved on this device only.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => downloadCsv(logs)}
+                  disabled={logs.length === 0}
+                  className="rounded border border-gray-700 px-3 py-2 text-sm text-gray-300 transition hover:border-gray-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Export CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  aria-label="Close post-game analysis"
+                  className="rounded border border-gray-700 px-3 py-2 text-sm text-gray-300 transition hover:border-gray-500 hover:text-white"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <p className="text-sm text-gray-400">Loading saved game logs...</p>
+            ) : (
+              <form onSubmit={event => void handleSubmit(event)} className="space-y-7">
+                <fieldset className="space-y-4">
+                  <legend className="mb-3 text-base font-semibold">A. Game Link</legend>
+                  <div>
+                    <label htmlFor="game-lichess-url" className="mb-2 block text-sm font-medium text-gray-300">
+                      Lichess game or study link <span className="font-normal text-gray-500">(optional)</span>
+                    </label>
+                    <input
+                      id="game-lichess-url"
+                      type="url"
+                      value={draft.lichess_url}
+                      onChange={event => updateDraft('lichess_url', event.target.value)}
+                      placeholder="https://lichess.org/..."
+                      className="w-full rounded border border-gray-700 bg-secondary px-3 py-2 text-white focus:border-accent focus:outline-none"
+                    />
+                  </div>
+                  <fieldset>
+                    <legend className="mb-2 block text-sm font-medium text-gray-300">Result</legend>
+                    <div className="flex flex-wrap gap-2">
+                      {(['Win', 'Loss', 'Draw'] as const).map(result => (
+                        <label key={result} className={`cursor-pointer rounded-full border px-4 py-2 text-sm transition ${draft.game_result === result ? 'border-accent bg-accent/15 text-white' : 'border-gray-700 text-gray-300 hover:border-gray-500'}`}>
+                          <input
+                            type="radio"
+                            name="game-result"
+                            value={result}
+                            checked={draft.game_result === result}
+                            onChange={() => updateDraft('game_result', result)}
+                            className="sr-only"
+                          />
+                          {result}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </fieldset>
+
+                <fieldset className="space-y-5">
+                  <legend className="mb-1 text-base font-semibold">B. Phase Ratings</legend>
+                  {([
+                    ['Opening', 'rating_opening'],
+                    ['Middlegame', 'rating_middlegame'],
+                    ['Endgame', 'rating_endgame'],
+                  ] as const).map(([phase, key]) => {
+                    const isOptionalPhase = key !== 'rating_opening';
+                    const value = draft[key];
+                    return (
+                      <div key={key}>
+                        <label htmlFor={key} className="mb-2 block text-sm font-medium text-gray-300">{phase}</label>
+                        <div className="flex items-center gap-3">
+                          <div className={`min-w-0 flex-1 ${value === null ? 'opacity-50' : ''}`}>
+                            <input
+                              id={key}
+                              type="range"
+                              min="1"
+                              max="10"
+                              step="1"
+                              value={value ?? 5}
+                              disabled={value === null}
+                              onChange={event => updateDraft(key, Number(event.target.value))}
+                              className="w-full cursor-pointer accent-accent disabled:cursor-not-allowed"
+                              aria-label={`${phase} performance`}
+                            />
+                            <div className="flex justify-between text-xs text-gray-500" aria-hidden="true">
+                              <span>Badly</span>
+                              <span>Okay</span>
+                              <span>Great</span>
+                            </div>
+                          </div>
+                          {isOptionalPhase && (
+                            <button
+                              type="button"
+                              aria-pressed={value === null}
+                              onClick={() => updateDraft(key, value === null ? 5 : null)}
+                              className={`rounded border px-2.5 py-1 text-xs transition ${value === null ? 'border-accent bg-accent/15 text-white' : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'}`}
+                            >
+                              N/a
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </fieldset>
+
+                <fieldset className="space-y-3">
+                  <legend className="mb-1 text-base font-semibold">C. Patterns</legend>
+                  {categories.map(category => (
+                    <section key={category.name} className="rounded border border-gray-800 bg-secondary/50 px-3 py-3">
+                      <h3 className="mb-3 text-sm font-semibold text-gray-200">{category.name}</h3>
+                      <div className="space-y-3">
+                        {category.tags.map(tag => (
+                          <label key={tag} className="flex cursor-pointer items-start gap-3 text-sm text-gray-300">
+                            <input
+                              type="checkbox"
+                              checked={draft.mistake_tags.includes(tag)}
+                              onChange={() => toggleTag(tag)}
+                              className="mt-0.5 accent-accent"
+                            />
+                            <span>{tag}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </fieldset>
+
+                <fieldset>
+                  <legend className="mb-3 text-base font-semibold">D. Focus &amp; reflection</legend>
+                  <label htmlFor="game-focus-rating" className="mb-2 block text-sm font-medium text-gray-300">Focus / energy</label>
+                  <input
+                    id="game-focus-rating"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={draft.focus_rating}
+                    onChange={event => updateDraft('focus_rating', Number(event.target.value))}
+                    className="w-full cursor-pointer accent-accent"
+                    aria-label="Focus and energy"
+                  />
+                  <div className="flex justify-between gap-4 text-xs text-gray-500">
+                    <span>Exhausted &amp; Distracted</span>
+                    <span className="text-right">Refreshed &amp; Focused</span>
+                  </div>
+                  <div className="mt-5">
+                    <label htmlFor="game-narrative-note" className="mb-2 block text-sm font-medium text-gray-300">
+                      Reflection <span className="font-normal text-gray-500">(optional, up to 300 characters)</span>
+                    </label>
+                    <textarea
+                      id="game-narrative-note"
+                      rows={3}
+                      maxLength={300}
+                      value={draft.narrative_note}
+                      onChange={event => updateDraft('narrative_note', event.target.value)}
+                      placeholder="What would you like to remember from this game?"
+                      className="w-full resize-y rounded border border-gray-700 bg-secondary px-3 py-2 text-white focus:border-accent focus:outline-none"
+                    />
+                  </div>
+                </fieldset>
+
+                {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+                {success && <p role="status" className="text-sm text-green-400">Game analysis saved.</p>}
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="w-full rounded bg-accent px-5 py-3 font-semibold text-white transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+                >
+                  {isSaving ? 'Saving...' : 'Save game analysis'}
+                </button>
+              </form>
+            )}
+          </section>
+        </div>
       )}
-    </section>
+    </>
   );
 }

@@ -178,6 +178,11 @@ create table if not exists public.game_logs (
   narrative_note text
 );
 
+-- Allow N/a selections for phases that were not reached.
+alter table public.game_logs
+  alter column rating_middlegame drop not null,
+  alter column rating_endgame drop not null;
+
 create index if not exists idx_game_logs_user_created
   on public.game_logs(user_id, created_at desc);
 

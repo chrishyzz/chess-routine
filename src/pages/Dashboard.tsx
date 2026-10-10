@@ -330,8 +330,6 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
         </section>
 
-        <GameAnalysisLog />
-
         {(user || isGuest) && (
           <div className="mt-6">
             <FocusMode
@@ -343,6 +341,8 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
             />
           </div>
         )}
+
+        <GameAnalysisLog />
 
         {(user || isGuest) && (
           <div className="mt-6">
