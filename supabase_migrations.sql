@@ -167,6 +167,7 @@ notify pgrst, 'reload schema';
 create table if not exists public.game_logs (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) on delete cascade null,
+  lichess_username text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   lichess_url text,
   game_result text check (game_result in ('Win', 'Loss', 'Draw')),
@@ -178,6 +179,9 @@ create table if not exists public.game_logs (
   narrative_note text
 );
 
+alter table public.game_logs
+  add column if not exists lichess_username text;
+
 -- Allow N/a selections for phases that were not reached.
 alter table public.game_logs
   alter column rating_middlegame drop not null,
@@ -186,7 +190,29 @@ alter table public.game_logs
 create index if not exists idx_game_logs_user_created
   on public.game_logs(user_id, created_at desc);
 
+create index if not exists idx_game_logs_lichess_username_created
+  on public.game_logs(lichess_username, created_at desc);
+
 alter table public.game_logs enable row level security;
+
+-- Username-based logs have no authenticated owner; reads are intentionally public.
+drop policy if exists "Anyone can read game logs" on public.game_logs;
+create policy "Anyone can read game logs"
+  on public.game_logs for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "Anyone can insert username-attributed game logs" on public.game_logs;
+create policy "Anyone can insert username-attributed game logs"
+  on public.game_logs for insert
+  to anon, authenticated
+  with check (
+    user_id is null
+    and lichess_username is not null
+    and length(btrim(lichess_username)) > 0
+  );
+
+grant select, insert on public.game_logs to anon, authenticated;
 
 drop policy if exists "Users can read their own game logs" on public.game_logs;
 create policy "Users can read their own game logs"
