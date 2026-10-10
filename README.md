@@ -29,7 +29,7 @@ Focus Mode configurations remain active across devices until the time-based dura
 
 Project active/backlog state is stored in `projects.is_active`; apply the corresponding migration in `supabase_migrations.sql` to existing Supabase databases.
 
-Game analysis logs are opened from the Post-game analysis button beside Focus Mode. Middlegame and endgame ratings can be marked N/a when those phases were not reached. Logs are inserted into `game_logs` with a Lichess username; the username is cached in browser local storage and prefilled from the Lichess login when available. Apply the `game_logs` migration in `supabase_migrations.sql` before using the form. Because this mode does not use authentication, usernames are unverified: anyone with the Supabase anon key can attribute a log to any username and read logs for any username. Do not include sensitive notes.
+Game analysis logs are opened from the Post-game analysis button beside Focus Mode. Middlegame and endgame ratings can be marked N/a when those phases were not reached. When signed in to Lichess, the logger displays the username from the active OAuth session and inserts logs into `game_logs`; without a Lichess session, logs are saved locally on that device. Apply the `game_logs` migration in `supabase_migrations.sql` before using Supabase logging. Supabase does not validate the Lichess OAuth identity, so anyone with the public anon key can submit logs attributed to any username and read logs for any username. Do not include sensitive notes.
 
 ## Lichess OAuth Setup
 

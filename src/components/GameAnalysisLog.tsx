@@ -7,7 +7,7 @@ type GameResult = 'Win' | 'Loss' | 'Draw';
 interface GameLog {
   id: string;
   created_at: string;
-  lichess_username: string | null;
+  lichess_username?: string | null;
   lichess_url: string | null;
   game_result: GameResult | null;
   rating_opening: number;
@@ -29,7 +29,7 @@ interface GameLogDraft {
   narrative_note: string;
 }
 
-const lichessUsernameKey = 'chess-routine-lichess-username';
+const guestLogsKey = 'chess-routine-game-logs';
 
 const categories = [
   {
@@ -84,6 +84,23 @@ const initialDraft: GameLogDraft = {
   narrative_note: '',
 };
 
+function isGameLog(value: unknown): value is GameLog {
+  if (typeof value !== 'object' || value === null) return false;
+  const log = value as Record<string, unknown>;
+  return typeof log.id === 'string'
+    && typeof log.created_at === 'string'
+    && (typeof log.lichess_username === 'string' || log.lichess_username === null || log.lichess_username === undefined)
+    && (typeof log.lichess_url === 'string' || log.lichess_url === null)
+    && (log.game_result === 'Win' || log.game_result === 'Loss' || log.game_result === 'Draw' || log.game_result === null)
+    && typeof log.rating_opening === 'number'
+    && (typeof log.rating_middlegame === 'number' || log.rating_middlegame === null)
+    && (typeof log.rating_endgame === 'number' || log.rating_endgame === null)
+    && Array.isArray(log.mistake_tags)
+    && log.mistake_tags.every(tag => typeof tag === 'string')
+    && typeof log.focus_rating === 'number'
+    && (typeof log.narrative_note === 'string' || log.narrative_note === null);
+}
+
 function escapeCsvCell(value: string | number | null | undefined): string {
   const text = value == null ? '' : String(value);
   return `"${text.replace(/"/g, '""')}"`;
@@ -121,13 +138,12 @@ export function GameAnalysisLog() {
   const { user: lichessUser } = useAuth();
   const [draft, setDraft] = useState<GameLogDraft>(initialDraft);
   const [logs, setLogs] = useState<GameLog[]>([]);
-  const [username, setUsername] = useState(() => localStorage.getItem(lichessUsernameKey) ?? '');
-  const [activeUsername, setActiveUsername] = useState(() => localStorage.getItem(lichessUsernameKey) ?? '');
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const activeUsername = lichessUser?.username.trim() || null;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -146,28 +162,22 @@ export function GameAnalysisLog() {
   }, [isOpen]);
 
   useEffect(() => {
-    if (!lichessUser?.username) return;
-    setUsername(lichessUser.username);
-    setActiveUsername(lichessUser.username);
-    try {
-      localStorage.setItem(lichessUsernameKey, lichessUser.username);
-    } catch (cacheError) {
-      console.error('Unable to cache the Lichess username:', cacheError);
-    }
-  }, [lichessUser?.username]);
-
-  useEffect(() => {
     let isMounted = true;
     let loadSequence = 0;
 
-    async function loadLogs(lichessUsername: string) {
+    async function loadLogs(lichessUsername: string | null) {
       const currentLoad = ++loadSequence;
       setIsLoading(true);
       setError(null);
 
       try {
         if (!lichessUsername) {
-          if (isMounted && loadSequence === currentLoad) setLogs([]);
+          const storedLogs = localStorage.getItem(guestLogsKey);
+          const parsed: unknown = storedLogs ? JSON.parse(storedLogs) : [];
+          if (!Array.isArray(parsed) || !parsed.every(isGameLog)) {
+            throw new Error('Saved guest game logs have an invalid format.');
+          }
+          if (isMounted && loadSequence === currentLoad) setLogs(parsed);
           return;
         }
 
@@ -177,7 +187,7 @@ export function GameAnalysisLog() {
           const { data, error: fetchError } = await supabase
             .from('game_logs')
             .select('id, created_at, lichess_username, lichess_url, game_result, rating_opening, rating_middlegame, rating_endgame, mistake_tags, focus_rating, narrative_note')
-            .eq('lichess_username', lichessUsername.toLowerCase())
+            .eq('lichess_username', lichessUsername)
             .order('created_at', { ascending: false })
             .range(offset, offset + pageSize - 1);
           if (fetchError) throw fetchError;
@@ -221,18 +231,12 @@ export function GameAnalysisLog() {
     setError(null);
     setSuccess(false);
 
-    const lichessUsername = username.trim();
-    if (!lichessUsername) {
-      setError('Enter your Lichess username to save this game analysis.');
-      return;
-    }
-
     setIsSaving(true);
-    const normalizedUsername = lichessUsername.toLowerCase();
+    const lichessUsername = activeUsername;
     const log: GameLog = {
       id: crypto.randomUUID(),
       created_at: new Date().toISOString(),
-      lichess_username: normalizedUsername,
+      lichess_username: lichessUsername,
       lichess_url: draft.lichess_url.trim() || null,
       game_result: draft.game_result || null,
       rating_opening: draft.rating_opening,
@@ -243,33 +247,30 @@ export function GameAnalysisLog() {
       narrative_note: draft.narrative_note.trim() || null,
     };
     try {
-      try {
-        localStorage.setItem(lichessUsernameKey, lichessUsername);
-      } catch (cacheError) {
-        console.error('Unable to cache the Lichess username:', cacheError);
+      if (!lichessUsername) {
+        const updatedLogs = [log, ...logs];
+        localStorage.setItem(guestLogsKey, JSON.stringify(updatedLogs));
+        setLogs(updatedLogs);
+      } else {
+        const payload = {
+          lichess_username: lichessUser?.username || null,
+          lichess_url: draft.lichess_url.trim() || null,
+          game_result: draft.game_result || null,
+          rating_opening: draft.rating_opening,
+          rating_middlegame: draft.rating_middlegame,
+          rating_endgame: draft.rating_endgame,
+          mistake_tags: draft.mistake_tags,
+          focus_rating: draft.focus_rating,
+          narrative_note: draft.narrative_note.trim() || null,
+        };
+        const { data, error: insertError } = await supabase
+          .from('game_logs')
+          .insert([payload])
+          .select('id, created_at, lichess_username, lichess_url, game_result, rating_opening, rating_middlegame, rating_endgame, mistake_tags, focus_rating, narrative_note')
+          .single();
+        if (insertError) throw insertError;
+        setLogs(current => [data as GameLog, ...current.filter(existingLog => existingLog.id !== data.id)]);
       }
-      setUsername(lichessUsername);
-
-      const { data, error: insertError } = await supabase
-        .from('game_logs')
-        .insert({
-          id: log.id,
-          user_id: null,
-          lichess_username: normalizedUsername,
-          lichess_url: log.lichess_url,
-          game_result: log.game_result,
-          rating_opening: log.rating_opening,
-          rating_middlegame: log.rating_middlegame,
-          rating_endgame: log.rating_endgame,
-          mistake_tags: log.mistake_tags,
-          focus_rating: log.focus_rating,
-          narrative_note: log.narrative_note,
-        })
-        .select('id, created_at, lichess_username, lichess_url, game_result, rating_opening, rating_middlegame, rating_endgame, mistake_tags, focus_rating, narrative_note')
-        .single();
-      if (insertError) throw insertError;
-      setActiveUsername(lichessUsername);
-      setLogs(current => [data as GameLog, ...current.filter(existingLog => existingLog.id !== data.id)]);
       setDraft(initialDraft);
       setSuccess(true);
     } catch (saveError) {
@@ -313,8 +314,8 @@ export function GameAnalysisLog() {
                 <h2 id="game-analysis-title" className="text-xl font-semibold">Post-game analysis</h2>
                 <p className="mt-1 text-sm text-gray-400">
                   {activeUsername
-                    ? `Public logs attributed to @${activeUsername}. Username is not verified.`
-                    : 'Enter a Lichess username to save and load game logs.'}
+                    ? `Logging as @${activeUsername}`
+                    : 'Guest mode · game logs are saved on this device only'}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -341,33 +342,6 @@ export function GameAnalysisLog() {
               <p className="text-sm text-gray-400">Loading saved game logs...</p>
             ) : (
               <form onSubmit={event => void handleSubmit(event)} className="space-y-7">
-                <div>
-                  <label htmlFor="game-lichess-username" className="mb-2 block text-sm font-medium text-gray-300">
-                    Lichess username
-                  </label>
-                  <input
-                    id="game-lichess-username"
-                    type="text"
-                    required
-                    maxLength={64}
-                    autoComplete="username"
-                    value={username}
-                    onChange={event => setUsername(event.target.value)}
-                    onBlur={() => {
-                      const nextUsername = username.trim();
-                      setUsername(nextUsername);
-                      setActiveUsername(nextUsername);
-                      try {
-                        localStorage.setItem(lichessUsernameKey, nextUsername);
-                      } catch (cacheError) {
-                        console.error('Unable to cache the Lichess username:', cacheError);
-                      }
-                    }}
-                    placeholder="Your Lichess username"
-                    className="w-full rounded border border-gray-700 bg-secondary px-3 py-2 text-white focus:border-accent focus:outline-none"
-                  />
-                </div>
-
                 <fieldset className="space-y-4">
                   <legend className="mb-3 text-base font-semibold">A. Game Link</legend>
                   <div>
