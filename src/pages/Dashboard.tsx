@@ -7,6 +7,7 @@ import { Goals } from '../components/Goals';
 import { supabase } from '../lib/supabase';
 import { categoryColors } from '../lib/categoryColors';
 import { FocusMode, FocusModeConfig } from '../components/FocusMode';
+import { GameAnalysisLog } from '../components/GameAnalysisLog';
 
 interface StudySession {
   id: string;
@@ -328,6 +329,8 @@ export function Dashboard({ onOpenAbout }: DashboardProps) {
           <StudySessionForm onSubmit={logSession} />
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
         </section>
+
+        <GameAnalysisLog />
 
         {(user || isGuest) && (
           <div className="mt-6">

@@ -10,6 +10,7 @@ An app for self-directed chess training.
 - Use the app seamlessly across devices
 - Focus Mode with a focus category, duration target, and time-distribution goal
 - An active project priority queue with a collapsible project backlog
+- Quick post-game analysis logs with phase ratings, root-cause tags, focus rating, and CSV export
 
 ## How to Use
 
@@ -27,6 +28,8 @@ Study sessions are stored in a Supabase database, tied to your Lichess account. 
 Focus Mode configurations remain active across devices until the time-based duration ends or you end Focus Mode manually. Study sessions logged from a project are linked through `study_sessions.project_id`; their `session_date` drives date-based reports, and the database keeps their category aligned with the linked project. Apply the migrations in `supabase_migrations.sql` in the Supabase SQL editor before using these features.
 
 Project active/backlog state is stored in `projects.is_active`; apply the corresponding migration in `supabase_migrations.sql` to existing Supabase databases.
+
+Game analysis logs are saved to `game_logs` for an active Supabase Auth session. Without a Supabase Auth session, logs are stored in this browser's local storage and can be exported as CSV. The existing Lichess OAuth login is separate from Supabase Auth, so Lichess sign-in alone uses browser-local storage. Apply the `game_logs` migration in `supabase_migrations.sql` before saving account-backed logs.
 
 ## Lichess OAuth Setup
 

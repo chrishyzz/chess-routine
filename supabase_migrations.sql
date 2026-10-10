@@ -162,3 +162,46 @@ when (old.category is distinct from new.category)
 execute function public.sync_project_category_to_study_sessions();
 
 notify pgrst, 'reload schema';
+
+-- Store qualitative post-game analysis for authenticated users.
+create table if not exists public.game_logs (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  lichess_url text,
+  game_result text check (game_result in ('Win', 'Loss', 'Draw')),
+  rating_opening integer check (rating_opening between 1 and 10),
+  rating_middlegame integer check (rating_middlegame between 1 and 10),
+  rating_endgame integer check (rating_endgame between 1 and 10),
+  mistake_tags text[] default '{}',
+  focus_rating integer check (focus_rating between 0 and 100),
+  narrative_note text
+);
+
+create index if not exists idx_game_logs_user_created
+  on public.game_logs(user_id, created_at desc);
+
+alter table public.game_logs enable row level security;
+
+drop policy if exists "Users can read their own game logs" on public.game_logs;
+create policy "Users can read their own game logs"
+  on public.game_logs for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert their own game logs" on public.game_logs;
+create policy "Users can insert their own game logs"
+  on public.game_logs for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own game logs" on public.game_logs;
+create policy "Users can update their own game logs"
+  on public.game_logs for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete their own game logs" on public.game_logs;
+create policy "Users can delete their own game logs"
+  on public.game_logs for delete
+  using (auth.uid() = user_id);
+
+notify pgrst, 'reload schema';
