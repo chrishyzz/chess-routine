@@ -142,14 +142,19 @@ export function GameAnalysisLog() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const activeUsername = lichessUser?.username.trim() || null;
+
+  function closeModal() {
+    setIsOpen(false);
+    setDraft(initialDraft);
+    setError(null);
+  }
 
   useEffect(() => {
     if (!isOpen) return;
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setIsOpen(false);
+      if (event.key === 'Escape') closeModal();
     }
 
     const previousOverflow = document.body.style.overflow;
@@ -213,7 +218,6 @@ export function GameAnalysisLog() {
 
   function updateDraft<Key extends keyof GameLogDraft>(key: Key, value: GameLogDraft[Key]) {
     setDraft(current => ({ ...current, [key]: value }));
-    setSuccess(false);
   }
 
   function toggleTag(tag: string) {
@@ -223,13 +227,11 @@ export function GameAnalysisLog() {
         ? current.mistake_tags.filter(selectedTag => selectedTag !== tag)
         : [...current.mistake_tags, tag],
     }));
-    setSuccess(false);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setSuccess(false);
 
     setIsSaving(true);
     const lichessUsername = activeUsername;
@@ -271,8 +273,7 @@ export function GameAnalysisLog() {
         if (insertError) throw insertError;
         setLogs(current => [data as GameLog, ...current.filter(existingLog => existingLog.id !== data.id)]);
       }
-      setDraft(initialDraft);
-      setSuccess(true);
+      closeModal();
     } catch (saveError) {
       console.error('Failed to save game log:', saveError);
       setError(saveError instanceof Error ? saveError.message : 'Unable to save this game log.');
@@ -300,7 +301,7 @@ export function GameAnalysisLog() {
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-5"
           onMouseDown={event => {
-            if (event.target === event.currentTarget) setIsOpen(false);
+            if (event.target === event.currentTarget) closeModal();
           }}
         >
           <section
@@ -329,7 +330,7 @@ export function GameAnalysisLog() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={closeModal}
                   aria-label="Close post-game analysis"
                   className="rounded border border-gray-700 px-3 py-2 text-sm text-gray-300 transition hover:border-gray-500 hover:text-white"
                 >
@@ -482,7 +483,6 @@ export function GameAnalysisLog() {
                 </fieldset>
 
                 {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
-                {success && <p role="status" className="text-sm text-green-400">Game analysis saved.</p>}
                 <button
                   type="submit"
                   disabled={isSaving}
